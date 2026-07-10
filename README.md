@@ -91,5 +91,3 @@ npm run dev
 - [開発の軌跡と試行錯誤 (Development Journey)](./docs/development_journey.md)
 - [技術的アーキテクチャと論点 (Technical Decisions)](./docs/technical_decisions.md)
 
-## 👤 作者
-[あなたの名前 / リンク等]
