@@ -73,7 +73,7 @@ export default function Home() {
             A
           </div>
           <h1 className="text-xl font-bold tracking-tight text-slate-800">
-            argdrasill <span className="text-sm font-normal text-slate-500 ml-2">議論木形成プラットフォーム</span>
+            国会議論木 <span className="text-sm font-normal text-slate-500 ml-2">議論木形成プラットフォーム</span>
           </h1>
         </div>
         

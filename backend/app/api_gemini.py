@@ -20,7 +20,7 @@ def generate_argument_tree(query: str, minutes_text: str) -> ArgumentTree:
     
     # プロンプトの構築（文字数を少し余裕をもたせる）
     prompt = f"""
-あなたは議論を整理・構造化する専門AI（アギュドラシル）です。
+あなたは議論を整理・構造化する専門AI（国会議論木）です。
 以下の国会議事録テキスト（キーワードに関する発言の抜粋）を分析し、テーマ「{query}」に関する議論木（Argument Tree）をJSON形式で生成してください。
 
 【議事録】
@@ -87,7 +87,7 @@ def generate_node_detail(query: str, node_label: str, minutes_text: str) -> str:
     model = genai.GenerativeModel('gemini-3.5-flash')
     
     prompt = f"""
-あなたは議論を深掘りして解説する専門AI（アギュドラシル）です。
+あなたは議論を深掘りして解説する専門AI（国会議論木）です。
 以下の国会議事録テキスト（テーマ「{query}」に関する発言）をもとに、特定の論点である「{node_label}」について詳細な解説をMarkdown形式で生成してください。
 
 【要求事項】

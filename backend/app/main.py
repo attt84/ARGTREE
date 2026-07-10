@@ -9,7 +9,7 @@ from .api_gemini import generate_argument_tree, generate_node_detail, expand_sea
 # 環境変数の読み込み
 load_dotenv()
 
-app = FastAPI(title="ARGTREE API", description="議事録を構造化・可視化するAPI")
+app = FastAPI(title="国会議論木 API", description="議事録を構造化・可視化するAPI")
 
 # CORSの設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
@@ -22,7 +22,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to ARGTREE API"}
+    return {"message": "Welcome to 国会議論木 API"}
 
 @app.post("/api/search", response_model=ArgumentResponse)
 def search_and_structure(request: SearchRequest):

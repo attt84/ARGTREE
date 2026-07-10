@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "argdrasill | 議論木形成プラットフォーム",
+  title: "国会議論木 | 議論木形成プラットフォーム",
   description: "国会の議事録をLLMで体系化し可視化する簡易WEBアプリ",
 };
 
