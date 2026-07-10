@@ -15,8 +15,8 @@ def generate_argument_tree(query: str, minutes_text: str) -> ArgumentTree:
         raise ValueError("GEMINI_API_KEY is not set.")
         
     genai.configure(api_key=api_key)
-    # Gemini 1.5 Flash を使用して高速な構造化処理を行う
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Gemini 3.5 Flash を使用して高速な構造化処理を行う
+    model = genai.GenerativeModel('gemini-3.5-flash')
     
     prompt = f"""
 あなたは議論を整理・構造化する専門AI（アギュドラシル）です。
