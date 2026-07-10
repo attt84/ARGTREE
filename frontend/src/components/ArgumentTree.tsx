@@ -21,6 +21,7 @@ interface TreeData {
 
 interface ArgumentTreeProps {
   data: TreeData | null;
+  onNodeClick?: (nodeData: { id: string; label: string; type: string; source?: string }) => void;
 }
 
 // 簡単な自動レイアウト（簡易版のダグリッジ）
@@ -62,7 +63,7 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
   return { nodes, edges };
 };
 
-const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data }) => {
+const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -133,6 +134,12 @@ const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data }) => {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={(_, node) => {
+          if (onNodeClick && data) {
+            const originalNode = data.nodes.find(n => n.id === node.id);
+            if (originalNode) onNodeClick(originalNode);
+          }
+        }}
         fitView
         attributionPosition="bottom-right"
       >

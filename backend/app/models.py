@@ -3,6 +3,7 @@ from typing import List, Optional
 
 class SearchRequest(BaseModel):
     query: str = Field(..., description="The search keyword, e.g., '少子化対策'")
+    use_super_search: bool = Field(False, description="Whether to use query expansion")
 
 class ArgumentNode(BaseModel):
     id: str
@@ -22,3 +23,11 @@ class ArgumentTree(BaseModel):
 class ArgumentResponse(BaseModel):
     query: str
     tree: ArgumentTree
+
+class NodeDetailRequest(BaseModel):
+    query: str
+    node_label: str
+
+class NodeDetailResponse(BaseModel):
+    node_label: str
+    detail_markdown: str

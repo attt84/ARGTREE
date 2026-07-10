@@ -4,44 +4,54 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-KOKKAI_API_URL = "https://kokkai.ndl.go.jp/api/meeting"
+KOKKAI_API_URL = "https://kokkai.ndl.go.jp/api/speech"
 
-def fetch_diet_minutes(query: str, max_records: int = 3) -> str:
+def fetch_diet_minutes(query: str | list[str], max_records: int = 15) -> str:
     """
-    国会会議録検索APIから指定されたキーワードに関連する議事録を取得する。
+    国会会議録検索APIから指定されたキーワードを含む発言を直接取得する。
+    クエリがリストの場合は並列または順次に取得し、マージして返す。
     """
-    params = {
-        "any": query,
-        "maximumRecords": max_records,
-        "recordPacking": "json"
-    }
+    queries = query if isinstance(query, list) else [query]
+    
+    # 複数クエリの場合は1クエリあたりの取得件数を減らす（最大合計を維持）
+    per_query_max = max(5, max_records // len(queries))
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    try:
-        response = requests.get(KOKKAI_API_URL, params=params, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+    all_minutes_text = ""
+    
+    for q in queries:
+        params = {
+            "any": q,
+            "maximumRecords": per_query_max,
+            "recordPacking": "json"
+        }
         
-        minutes_text = ""
-        if "meetingRecord" in data:
-            for meeting in data["meetingRecord"]:
-                meeting_name = meeting.get("nameOfMeeting", "不明な会議")
-                date = meeting.get("date", "")
-                minutes_text += f"\n--- 会議: {meeting_name} ({date}) ---\n"
-                
-                if "speechRecord" in meeting:
-                    for speech in meeting["speechRecord"]:
-                        speaker = speech.get("speaker", "不明")
-                        speech_text = speech.get("speech", "")
-                        minutes_text += f"[{speaker}]: {speech_text}\n"
-        
-        if not minutes_text.strip():
-            return "関連する議事録が見つかりませんでした。"
+        try:
+            response = requests.get(KOKKAI_API_URL, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
             
-        return minutes_text
+            if "speechRecord" in data:
+                for speech in data["speechRecord"]:
+                    meeting_name = speech.get("nameOfMeeting", "不明な会議")
+                    date = speech.get("date", "")
+                    speaker = speech.get("speaker", "不明")
+                    speech_text = speech.get("speech", "")
+                    speech_url = speech.get("speechURL", "")
+                    
+                    all_minutes_text += f"\n--- {meeting_name} ({date}) [クエリ: {q}] ---\n"
+                    if speech_url:
+                        all_minutes_text += f"URL: {speech_url}\n"
+                    all_minutes_text += f"[{speaker}]: {speech_text}\n"
+                    
+        except Exception as e:
+            logger.error(f"Error fetching Kokkai API for query '{q}': {e}")
+            continue
+
+    if not all_minutes_text.strip():
+        return "関連する議事録が見つかりませんでした。"
         
-    except Exception as e:
-        logger.error(f"Error fetching Kokkai API: {e}")
-        return f"議事録の取得中にエラーが発生しました: {str(e)}"
+    return all_minutes_text
