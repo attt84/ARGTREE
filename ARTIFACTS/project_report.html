@@ -1,0 +1,835 @@
+<title>国会議論木 プロジェクトレポート</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --surface:#ffffff; --surface2:#e9edf3; --ink:#1f2933; --muted:#66758a;
+    --line:#d9e0e9; --accent:#1e4d8c; --accent-soft:#e3ebf6; --accent-ink:#ffffff;
+    --pro:#1c7a4d; --pro-soft:#e2f2e9; --con:#b23a48; --con-soft:#f8e7e9;
+    --warn:#95660f; --warn-soft:#f7eed7; --todo:#5c6b7c; --todo-soft:#e7ebef;
+    --code-bg:#eef1f6;
+    --serif:"Hiragino Mincho ProN","Yu Mincho","BIZ UDPMincho","MS PMincho",serif;
+    --sans:"Hiragino Sans","Yu Gothic UI","Meiryo","Segoe UI",sans-serif;
+    --mono:Consolas,"Courier New",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#10161e; --surface:#18202b; --surface2:#1f2937; --ink:#e3e9f0; --muted:#93a3b5;
+      --line:#2b3745; --accent:#8db1e0; --accent-soft:#20304a; --accent-ink:#0e1826;
+      --pro:#5cc491; --pro-soft:#16311f; --con:#e08b95; --con-soft:#3a2025;
+      --warn:#d9ae55; --warn-soft:#382c14; --todo:#9aa8b8; --todo-soft:#252e3a;
+      --code-bg:#141b25;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f2f4f7; --surface:#ffffff; --surface2:#e9edf3; --ink:#1f2933; --muted:#66758a;
+    --line:#d9e0e9; --accent:#1e4d8c; --accent-soft:#e3ebf6; --accent-ink:#ffffff;
+    --pro:#1c7a4d; --pro-soft:#e2f2e9; --con:#b23a48; --con-soft:#f8e7e9;
+    --warn:#95660f; --warn-soft:#f7eed7; --todo:#5c6b7c; --todo-soft:#e7ebef;
+    --code-bg:#eef1f6;
+  }
+  :root[data-theme="dark"]{
+    --bg:#10161e; --surface:#18202b; --surface2:#1f2937; --ink:#e3e9f0; --muted:#93a3b5;
+    --line:#2b3745; --accent:#8db1e0; --accent-soft:#20304a; --accent-ink:#0e1826;
+    --pro:#5cc491; --pro-soft:#16311f; --con:#e08b95; --con-soft:#3a2025;
+    --warn:#d9ae55; --warn-soft:#382c14; --todo:#9aa8b8; --todo-soft:#252e3a;
+    --code-bg:#141b25;
+  }
+  html{background:var(--bg);}
+  body{font-family:var(--sans); color:var(--ink); line-height:1.75; font-size:14.5px;}
+  .layout{display:flex; min-height:100vh;}
+
+  /* ===== sidebar ===== */
+  aside{width:248px; flex-shrink:0; border-right:1px solid var(--line); background:var(--surface);
+    position:sticky; top:0; height:100vh; overflow-y:auto; padding:20px 0 32px;}
+  .brand{padding:0 20px 14px; border-bottom:1px solid var(--line); margin-bottom:14px;}
+  .brand .ttl{font-family:var(--serif); font-size:19px; font-weight:700; letter-spacing:.04em;}
+  .brand .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  nav .grp{font-size:10.5px; color:var(--muted); letter-spacing:.14em; padding:14px 20px 4px; font-weight:600;}
+  nav a{display:block; padding:5px 20px 5px 24px; color:var(--ink); text-decoration:none; font-size:13px;
+    border-left:3px solid transparent; cursor:pointer;}
+  nav a:hover{background:var(--surface2);}
+  nav a.active{border-left-color:var(--accent); background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  nav a:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+
+  /* ===== main ===== */
+  main{flex:1; min-width:0; padding:28px 40px 80px;}
+  .page{max-width:900px; margin:0 auto;}
+  .meta{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;
+    font-size:12px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:26px;}
+  .meta code{font-family:var(--mono);}
+  section{display:none;}
+  section.show{display:block;}
+  h2{font-family:var(--serif); font-size:26px; font-weight:700; letter-spacing:.03em; line-height:1.4;
+    margin-bottom:6px; text-wrap:balance;}
+  .lede{color:var(--muted); font-size:13.5px; margin-bottom:26px;}
+  h3{font-size:15.5px; font-weight:700; margin:34px 0 10px; display:flex; align-items:center; gap:8px;}
+  h3::before{content:""; width:9px; height:9px; background:var(--accent); flex-shrink:0;}
+  h4{font-size:13.5px; font-weight:700; margin:20px 0 8px;}
+  p{margin:0 0 12px;}
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:5px;}
+  strong{font-weight:700;}
+  a.ext{color:var(--accent);}
+  .jump{color:var(--accent); text-decoration:underline; cursor:pointer;}
+
+  /* ===== components ===== */
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:1px 10px; border-radius:999px;
+    white-space:nowrap; line-height:1.7;}
+  .p-done{background:var(--pro-soft); color:var(--pro);}
+  .p-doing{background:var(--accent-soft); color:var(--accent);}
+  .p-decide{background:var(--warn-soft); color:var(--warn);}
+  .p-block{background:var(--con-soft); color:var(--con);}
+  .p-todo{background:var(--todo-soft); color:var(--todo);}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:18px 0 6px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px;}
+  .card .num{font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.3;}
+  .card .lbl{font-size:12px; color:var(--muted); margin-top:2px;}
+  .card .note{font-size:11px; margin-top:6px;}
+  .num.ok{color:var(--pro);} .num.ng{color:var(--con);} .num.wa{color:var(--warn);}
+
+  .tblwrap{overflow-x:auto; margin:10px 0 18px; border:1px solid var(--line); border-radius:8px; background:var(--surface);}
+  table{border-collapse:collapse; width:100%; font-size:13px;}
+  th{background:var(--surface2); text-align:left; font-size:12px; padding:8px 12px; white-space:nowrap;}
+  td{padding:8px 12px; border-top:1px solid var(--line); vertical-align:top;}
+  td.c{white-space:nowrap;}
+  table code, p code, li code{font-family:var(--mono); font-size:12px; background:var(--code-bg);
+    padding:1px 5px; border-radius:4px;}
+  pre{background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px;
+    overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.6; margin:10px 0 18px;}
+  pre code{background:none; padding:0;}
+
+  .callout{border:1px solid var(--line); border-left:4px solid var(--accent); background:var(--surface);
+    border-radius:6px; padding:12px 16px; margin:14px 0; font-size:13.5px;}
+  .callout.warn{border-left-color:var(--warn);}
+  .callout.risk{border-left-color:var(--con);}
+  .callout .ct{font-weight:700; font-size:12.5px; margin-bottom:4px;}
+
+  /* lane diagram */
+  .lanes{display:flex; gap:14px; margin:16px 0 22px; overflow-x:auto; padding-bottom:6px;}
+  .lane{flex:1; min-width:230px; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px;}
+  .lane>.lt{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.08em; margin-bottom:10px;
+    padding-bottom:6px; border-bottom:1px dashed var(--line);}
+  .lnode{background:var(--surface2); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:12.5px;}
+  .lnode .nm{font-weight:700; display:flex; align-items:center; gap:6px;}
+  .lnode .ds{color:var(--muted); font-size:11.5px; margin-top:2px;}
+  .sym{font-family:var(--mono); font-size:11px; font-weight:700; background:var(--accent); color:var(--accent-ink);
+    border-radius:4px; padding:0 5px; line-height:1.6;}
+  .sym.ghost{background:var(--todo-soft); color:var(--todo);}
+  .larr{text-align:center; color:var(--muted); font-size:11px; line-height:1.9;}
+
+  /* flowchart */
+  .flow{max-width:640px; margin:16px 0 22px;}
+  .fstep{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:9px 14px; font-size:13px;}
+  .fstep .fs{font-weight:700;}
+  .fstep .fd{color:var(--muted); font-size:12px;}
+  .fstep.dec{border-color:var(--warn); border-style:dashed;}
+  .fstep.err{border-color:var(--con); background:var(--con-soft);}
+  .fstep.ok2{border-color:var(--pro);}
+  .farr{text-align:center; color:var(--muted); font-size:12px; line-height:2;}
+  .fbranch{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0;}
+  .fbcol .fbl{text-align:center; font-size:11px; color:var(--muted); line-height:2;}
+
+  .kv{display:grid; grid-template-columns:150px 1fr; gap:4px 16px; font-size:13px; margin:10px 0 16px;}
+  .kv dt{color:var(--muted);}
+  .kv dd{margin:0;}
+
+  @media (max-width:840px){
+    .layout{flex-direction:column;}
+    aside{width:auto; height:auto; position:static; border-right:none; border-bottom:1px solid var(--line);}
+    nav{display:flex; flex-wrap:wrap; gap:0 4px; padding:0 12px 10px;}
+    nav .grp{width:100%; padding:10px 8px 2px;}
+    nav a{border-left:none; border-radius:6px; padding:4px 10px;}
+    nav a.active{border-left:none;}
+    main{padding:20px 16px 60px;}
+    .kv{grid-template-columns:1fr;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto !important;} }
+</style>
+
+<div class="layout">
+<aside>
+  <div class="brand">
+    <div class="ttl">国会議論木</div>
+    <div class="sub">プロジェクトレポート（生きたドキュメント）</div>
+  </div>
+  <nav>
+    <div class="grp">概要</div>
+    <a data-target="overview" class="active">プロジェクト概要</a>
+    <a data-target="status">現在地サマリ</a>
+    <a data-target="pipeline">パイプライン全体像</a>
+    <div class="grp">フェーズ詳細</div>
+    <a data-target="phase-a">A. クエリ拡張（超検索）</a>
+    <a data-target="phase-b">B. 議事録取得（国会API）</a>
+    <a data-target="phase-c">C. 議論木生成（Gemini）</a>
+    <a data-target="phase-d">D. ツリー可視化</a>
+    <a data-target="phase-e">E. 深掘り解説（RAG）</a>
+    <a data-target="phase-f">F. バックエンド基盤</a>
+    <a data-target="phase-g">G. フロントエンド基盤</a>
+    <div class="grp">データ・評価</div>
+    <a data-target="data-eda">データソースEDA</a>
+    <a data-target="quality">品質・評価</a>
+    <div class="grp">横断・運用</div>
+    <a data-target="cross">横断論点</a>
+    <a data-target="agenda">論点まとめ・次手</a>
+    <div class="grp">実装</div>
+    <a data-target="plan">実装計画</a>
+  </nav>
+</aside>
+
+<main><div class="page">
+  <div class="meta">
+    <span>リポジトリ: <code>attt84/ARGTREE</code>（branch: <code>claude/argtree-review-b35720</code>）</span>
+    <span>最終更新: <strong>2026-07-16</strong>（初版作成）</span>
+  </div>
+
+  <!-- ============================================================ -->
+  <section id="overview" class="show">
+    <h2>プロジェクト概要</h2>
+    <p class="lede">国会議事録をAIで構造化し「議論木」として可視化するWebアプリケーションの、現状把握と論点整理のための中核ドキュメント。</p>
+
+    <h3>何を作っているか</h3>
+    <p><strong>国会議論木</strong>は、キーワード（例:「AI規制」）を入力すると、国立国会図書館の国会会議録検索APIから関連発言を取得し、Gemini（<code>gemini-3.5-flash</code>）で「大テーマ・賛成・反対・中立・解決策」のノードに分類した<strong>議論木（Argument Tree）</strong>を描画するアプリケーション。各ノードはクリックで深掘りでき、実際の発言引用と議事録の一次情報URLつきの解説をAIが生成する。</p>
+    <p>利用フローは次の5段階:</p>
+    <ol>
+      <li>キーワード入力（オプションで「超検索」= AIによるクエリ拡張をON）</li>
+      <li>議事録の取得とGeminiによる構造化 → ツリー描画（緑=賛成、赤=反対、黄=解決策、青=テーマ）</li>
+      <li>気になるノードをクリック → サイドバー展開</li>
+      <li>「AIで深掘り解説を生成」→ 背景・引用・対立意見のレポート生成</li>
+      <li>解説内の一次情報URL（国会会議録の発言単位リンク）でファクトチェック</li>
+    </ol>
+
+    <h3>技術スタック</h3>
+    <div class="tblwrap"><table>
+      <tr><th>層</th><th>技術</th><th>備考</th></tr>
+      <tr><td class="c">フロントエンド</td><td>Next.js 16（App Router）/ React 19 / Tailwind CSS v3 / React Flow（@xyflow/react v12）+ dagre / axios / react-markdown</td><td><code>framer-motion</code> は依存に入っているが未使用</td></tr>
+      <tr><td class="c">バックエンド</td><td>FastAPI（Python）/ google-generativeai SDK / requests / pydantic / python-dotenv</td><td>SDKは<strong>非推奨・サポート終了済み</strong>（<span class="jump" data-jump="cross">横断論点</span>参照）</td></tr>
+      <tr><td class="c">外部API</td><td>国会会議録検索API（<code>kokkai.ndl.go.jp/api/speech</code>）/ Gemini API（<code>gemini-3.5-flash</code>）</td><td>モデル名はGA確認済み（2026-07-16検証）</td></tr>
+    </table></div>
+
+    <h3>リポジトリ構成</h3>
+    <div class="tblwrap"><table>
+      <tr><th>ファイル</th><th>行数</th><th>役割</th></tr>
+      <tr><td><code>backend/app/main.py</code></td><td class="c">69</td><td>FastAPI本体。エンドポイントは <code>POST /api/search</code>・<code>POST /api/node_detail</code> の2つ（+ルート）</td></tr>
+      <tr><td><code>backend/app/api_gemini.py</code></td><td class="c">147</td><td>Gemini呼び出し3種: ツリー生成 / 深掘り解説 / クエリ拡張</td></tr>
+      <tr><td><code>backend/app/api_kokkai.py</code></td><td class="c">57</td><td>国会会議録検索APIクライアント（発言単位取得・テキスト整形）</td></tr>
+      <tr><td><code>backend/app/models.py</code></td><td class="c">33</td><td>Pydanticモデル（リクエスト/レスポンス/ツリー構造）</td></tr>
+      <tr><td><code>frontend/src/app/page.tsx</code></td><td class="c">204</td><td>検索UI・ローディング・深掘りサイドバー（単一ページ）</td></tr>
+      <tr><td><code>frontend/src/components/ArgumentTree.tsx</code></td><td class="c">154</td><td>React Flow描画・dagre自動レイアウト・タイプ別色分け</td></tr>
+      <tr><td><code>docs/</code></td><td class="c">—</td><td>開発経緯（development_journey.md）・技術判断（technical_decisions.md）・UI画像</td></tr>
+    </table></div>
+
+    <h3>本レポートの運用</h3>
+    <ul>
+      <li>本ファイルは <code>ARTIFACTS/project_report.html</code> としてリポジトリ内でgit管理し、Artifactとして同一URLへ再公開する。</li>
+      <li>発見・決定・実行結果が出るたびに該当ページを更新し、ヘッダの更新日を書き換える（会話内に留めない）。</li>
+      <li>設計が確定した論点は「設計案」から「確定設計」へ昇格させ、<span class="jump" data-jump="agenda">論点まとめ</span>のアジェンダ表を更新する。</li>
+      <li>議論は「1トピックずつ提示 → 合意 → 実装・PR → レポート更新」のサイクルで回す。</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="status">
+    <h2>現在地サマリ</h2>
+    <p class="lede">2026-07-16 時点のプロジェクト状態。機能は一通り動くが、基盤の保守性・信頼性に集中的な課題がある。</p>
+
+    <div class="cards">
+      <div class="card"><div class="num ok">3 / 3</div><div class="lbl">コア機能 実装済み</div><div class="note">可視化・深掘り・超検索</div></div>
+      <div class="card"><div class="num">2</div><div class="lbl">APIエンドポイント</div><div class="note">/api/search・/api/node_detail</div></div>
+      <div class="card"><div class="num wa">10</div><div class="lbl">未決論点（O1〜O10）</div><div class="note"><span class="jump" data-jump="agenda">論点まとめ</span>参照</div></div>
+      <div class="card"><div class="num ng">0</div><div class="lbl">自動テスト / CI</div><div class="note">いずれも未整備</div></div>
+      <div class="card"><div class="num ng">EOL</div><div class="lbl">LLM SDKサポート</div><div class="note">2025-08-31 終了済み</div></div>
+      <div class="card"><div class="num wa">未</div><div class="lbl">デプロイ</div><div class="note">ローカル起動前提の構成</div></div>
+    </div>
+
+    <h3>主要な停滞要因・リスク（優先度順）</h3>
+    <div class="callout risk"><div class="ct">R-1. 非推奨SDKへの依存（最重要）</div>
+      バックエンドが依存する <code>google-generativeai</code> はサポートが2025年8月31日に終了しており、後継の統一SDK <code>google-genai</code> への移行が公式に強く推奨されている。現状動作はしているが、障害時の修正手段がなく、新機能（堅牢な構造化出力・非同期など）も使えない。→ 論点 <strong>O1</strong></div>
+    <div class="callout warn"><div class="ct">R-2. デプロイ不能な構成</div>
+      フロントエンドがバックエンドURL <code>http://localhost:8000</code> を2箇所でハードコードしており、公開環境に置けない。環境変数化（<code>NEXT_PUBLIC_API_URL</code>）が必要。→ 論点 <strong>O5</strong></div>
+    <div class="callout warn"><div class="ct">R-3. 深掘り解説のコンテキスト不一致</div>
+      超検索でツリーを生成した場合でも、深掘り（node_detail）は元クエリ単独で議事録を再取得するため、ノードが生まれた文脈と異なる資料で解説が作られ得る。毎回の再取得はレイテンシと外部API負荷の面でも不利。→ 論点 <strong>O2</strong></div>
+    <div class="callout warn"><div class="ct">R-4. 品質を測る手段がない</div>
+      「良い議論木」の定義・評価指標・回帰確認の仕組みがなく、プロンプトやモデルを変更したときに品質が上がったか下がったか判定できない。→ <span class="jump" data-jump="quality">品質・評価</span></div>
+
+    <h3>直近の検証ログ</h3>
+    <div class="tblwrap"><table>
+      <tr><th>日付</th><th>検証内容</th><th>結果</th></tr>
+      <tr><td class="c">2026-07-16</td><td>モデル名 <code>gemini-3.5-flash</code> の実在確認（当初「存在しない可能性」を懸念）</td><td><span class="pill p-done">決着</span> 公式ドキュメントでGA（一般提供・本番利用可）と確認。<strong>変更不要</strong></td></tr>
+      <tr><td class="c">2026-07-16</td><td><code>google-generativeai</code> SDKのサポート状況確認</td><td><span class="pill p-block">要対応</span> 2025-08-31にサポート終了済み。<code>google-genai</code> への移行が公式推奨</td></tr>
+      <tr><td class="c">2026-07-16</td><td><code>.env</code>（APIキー）のgit除外確認</td><td><span class="pill p-done">問題なし</span> backend/frontend両方の .gitignore で除外済み</td></tr>
+      <tr><td class="c">2026-07-16</td><td>未使用依存の確認</td><td><span class="pill p-todo">軽微</span> <code>framer-motion</code> がフロントのソースで未使用（削除候補）</td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="pipeline">
+    <h2>パイプライン全体像</h2>
+    <p class="lede">処理はすべてオンライン（リクエスト時）に実行される。事前バッチやDBは存在しない「オンザフライ型RAG」構成。記号A〜Gは各フェーズ詳細ページに対応する。</p>
+
+    <h3>レーン図</h3>
+    <div class="lanes">
+      <div class="lane">
+        <div class="lt">検索・可視化フロー（POST /api/search）</div>
+        <div class="lnode"><div class="nm">キーワード入力</div><div class="ds">超検索ON/OFFを選択</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">A</span>クエリ拡張</div><div class="ds">超検索ON時のみ。Geminiが関連クエリを3つ生成</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">B</span>議事録取得</div><div class="ds">国会APIから発言単位で最大15件（逐次・同期）</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">C</span>議論木生成</div><div class="ds">Geminiがnodes/edgesのJSONを生成（先頭30,000字）</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">D</span>ツリー可視化</div><div class="ds">React Flow + dagreで自動レイアウト・色分け描画</div></div>
+      </div>
+      <div class="lane">
+        <div class="lt">深掘りフロー（POST /api/node_detail）</div>
+        <div class="lnode"><div class="nm">ノードクリック</div><div class="ds">サイドバー展開 → 生成ボタン押下</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">B</span>議事録<strong>再</strong>取得</div><div class="ds">元クエリのみで再検索（拡張クエリは使われない ⚠ O2）</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm"><span class="sym">E</span>深掘り解説生成</div><div class="ds">背景・引用・一次情報URL・対立意見をMarkdownで生成</div></div>
+        <div class="larr">▼</div>
+        <div class="lnode"><div class="nm">サイドバー表示</div><div class="ds">react-markdownでレンダリング</div></div>
+      </div>
+      <div class="lane">
+        <div class="lt">基盤・外部依存</div>
+        <div class="lnode"><div class="nm"><span class="sym">F</span>バックエンド基盤</div><div class="ds">FastAPI / CORS / .env / エラー処理</div></div>
+        <div class="larr">＋</div>
+        <div class="lnode"><div class="nm"><span class="sym">G</span>フロントエンド基盤</div><div class="ds">Next.js / axios / Tailwind</div></div>
+        <div class="larr">＋</div>
+        <div class="lnode"><div class="nm"><span class="sym ghost">外</span>国会会議録検索API</div><div class="ds">認証不要・AND検索のみ・発言単位出力</div></div>
+        <div class="larr">＋</div>
+        <div class="lnode"><div class="nm"><span class="sym ghost">外</span>Gemini API</div><div class="ds">gemini-3.5-flash（GA）。1検索あたり1〜2回呼び出し</div></div>
+      </div>
+    </div>
+
+    <h3>フローチャート（検索リクエストの分岐とフォールバック）</h3>
+    <div class="flow">
+      <div class="fstep"><span class="fs">POST /api/search</span> <span class="fd">{ query, use_super_search }</span></div>
+      <div class="farr">▼</div>
+      <div class="fstep dec"><span class="fs">超検索ON？</span></div>
+      <div class="fbranch">
+        <div class="fbcol"><div class="fbl">YES ▼</div>
+          <div class="fstep"><span class="fs">A: クエリ拡張</span><div class="fd">Geminiで3クエリ生成。失敗時は元クエリのみで続行</div></div>
+        </div>
+        <div class="fbcol"><div class="fbl">NO ▼</div>
+          <div class="fstep"><span class="fs">元クエリ1件のまま</span></div>
+        </div>
+      </div>
+      <div class="farr">▼</div>
+      <div class="fstep"><span class="fs">B: 国会APIへ逐次リクエスト</span><div class="fd">クエリごとに最大 max(5, 15÷クエリ数) 件。個別失敗はスキップ。全滅時は「見つかりませんでした」という<strong>文字列</strong>が次工程へ渡る</div></div>
+      <div class="farr">▼</div>
+      <div class="fstep"><span class="fs">C: Geminiで構造化 → JSONパース</span><div class="fd">コードフェンスを手動で剥がして json.loads</div></div>
+      <div class="fbranch">
+        <div class="fbcol"><div class="fbl">成功 ▼</div>
+          <div class="fstep ok2"><span class="fs">ツリーJSONを返却（200）</span></div>
+        </div>
+        <div class="fbcol"><div class="fbl">失敗 ▼</div>
+          <div class="fstep err"><span class="fs">ダミーツリー返却（200）</span><div class="fd">「解析エラー」ノード + gemini_error.txt をCWDに書き出し ⚠ O4</div></div>
+        </div>
+      </div>
+      <div class="farr">▼</div>
+      <div class="fstep"><span class="fs">D: dagreレイアウト → React Flow描画</span><div class="fd">dagre読込失敗時はグリッド配置にフォールバック</div></div>
+    </div>
+
+    <h3>記号とページの対応</h3>
+    <div class="tblwrap"><table>
+      <tr><th>記号</th><th>フェーズ</th><th>主担当ファイル</th></tr>
+      <tr><td class="c"><span class="sym">A</span></td><td><span class="jump" data-jump="phase-a">クエリ拡張（超検索）</span></td><td><code>api_gemini.py: expand_search_query</code></td></tr>
+      <tr><td class="c"><span class="sym">B</span></td><td><span class="jump" data-jump="phase-b">議事録取得</span></td><td><code>api_kokkai.py: fetch_diet_minutes</code></td></tr>
+      <tr><td class="c"><span class="sym">C</span></td><td><span class="jump" data-jump="phase-c">議論木生成</span></td><td><code>api_gemini.py: generate_argument_tree</code></td></tr>
+      <tr><td class="c"><span class="sym">D</span></td><td><span class="jump" data-jump="phase-d">ツリー可視化</span></td><td><code>ArgumentTree.tsx</code></td></tr>
+      <tr><td class="c"><span class="sym">E</span></td><td><span class="jump" data-jump="phase-e">深掘り解説</span></td><td><code>api_gemini.py: generate_node_detail</code></td></tr>
+      <tr><td class="c"><span class="sym">F</span></td><td><span class="jump" data-jump="phase-f">バックエンド基盤</span></td><td><code>main.py / models.py</code></td></tr>
+      <tr><td class="c"><span class="sym">G</span></td><td><span class="jump" data-jump="phase-g">フロントエンド基盤</span></td><td><code>page.tsx / package.json</code></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-a">
+    <h2><span class="sym">A</span> クエリ拡張（超検索）</h2>
+    <p class="lede">国会APIが「スペース区切り＝AND検索」しかサポートしない制約を、LLMによるQuery Expansionで乗り越える機能。</p>
+
+    <h3>目的</h3>
+    <p>単一キーワードでは取りこぼす「周辺議論」（例:「AI規制」に対する「人工知能 ガバナンス」「ディープフェイク」）を、AIが生成した関連クエリで網羅的に取得し、疑似的なセマンティック検索を実現する。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li><code>expand_search_query()</code> がGeminiに関連クエリを生成させ、JSON配列を手動パース。<strong>最大3クエリ</strong>に切り詰めて返す。</li>
+      <li>プロンプトには出力例（「少子化対策」→ <code>["少子化対策", "児童手当", "育休 支援"]</code>）を含み、1クエリ=1〜2語に制限。</li>
+      <li>生成失敗・パース失敗時は元クエリ1件にフォールバック（ユーザーには失敗が見えない）。</li>
+      <li>拡張されたクエリは<strong>レスポンスに含まれず</strong>、ユーザーはどんなクエリで検索されたか知る術がない（議事録テキスト中の <code>[クエリ: q]</code> ラベルがLLM経由で見える可能性はあるが保証なし）。</li>
+    </ul>
+
+    <h3>設計案</h3>
+    <ul>
+      <li>JSONパースは <span class="jump" data-jump="phase-c">C</span> と同じく structured output（response_schema）へ寄せる（O1/O3と同時実施）。</li>
+      <li><code>ArgumentResponse</code> に <code>expanded_queries: list[str]</code> を追加し、フロントでチップ表示して透明性を確保する。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">A-1</td><td>拡張クエリの可視化</td><td>①レスポンスに含めUI表示 ②現状のまま非表示</td><td>検索の透明性・デバッグ性向上 vs UIの複雑化。実装コストは小さい。<strong>推奨: ①</strong></td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">A-2</td><td>拡張数3固定の妥当性</td><td>①3固定 ②2〜5で可変（UI指定 or 自動）</td><td>クエリ数×国会APIレイテンシ（逐次処理なら線形増加）。O6の並列化が入れば増やす余地。<strong>推奨: 並列化後に再検討</strong></td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">A-3</td><td>JSONパースの堅牢化</td><td>①手動フェンス剥がし（現状） ②response_schema</td><td>O3（構造化出力）に統合して判断</td><td class="c"><span class="pill p-decide">要判断→O3</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-b">
+    <h2><span class="sym">B</span> 議事録取得（国会API）</h2>
+    <p class="lede">検索キーワードに関連する発言を一次情報URL付きで収集する、RAGの「Retrieval」部分。</p>
+
+    <h3>目的</h3>
+    <p>ユーザーのクエリ（または拡張クエリ群）に該当する国会発言を、後段のLLM処理に適した密度・形式で取得する。開発初期に「会議単位取得」から「発言単位取得」へピボット済み（決着済み論点 R1）。</p>
+
+    <h3>現状</h3>
+    <dl class="kv">
+      <dt>取得方式</dt><dd><code>requests</code> による<strong>同期・逐次</strong>リクエスト（タイムアウト10秒）</dd>
+      <dt>取得件数</dt><dd>クエリごとに <code>max(5, 15 ÷ クエリ数)</code> 件（単独=15件、超検索3クエリ=各5件）</dd>
+      <dt>抽出フィールド</dt><dd>会議名・日付・発言者・発言本文・発言URL の5種のみ</dd>
+      <dt>整形</dt><dd>「--- 会議名 (日付) [クエリ: q] --- / URL / [発言者]: 本文」の形式で1本のテキストに連結</dd>
+      <dt>エラー処理</dt><dd>クエリ単位の失敗はログしてスキップ。全滅時は「関連する議事録が見つかりませんでした。」という<strong>文字列を返し、それがそのままLLMに渡る</strong></dd>
+    </dl>
+
+    <h3>設計案</h3>
+    <ul>
+      <li><code>httpx.AsyncClient</code> + <code>asyncio.gather</code> による並列取得（docs/technical_decisions.md でも既知の課題として明記済み）。</li>
+      <li>連結済み文字列ではなく<strong>発言のリスト（構造化データ）</strong>として保持し、重複排除・キャッシュ・件数制御をしやすくする。プロンプト用テキストへの整形は最後に行う。</li>
+      <li>超検索時に同一発言が複数クエリでヒットした場合の重複排除（speechIDまたはspeechURLをキーに）。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">B-1</td><td>非同期並列化（O6）</td><td>①httpx+asyncio.gather ②現状維持</td><td>超検索時のレイテンシが約1/3に。エンドポイントの async 化も伴う。<strong>推奨: O2のキャッシュ導入と同時に実施</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">B-2</td><td>取得件数の最適化（O10）</td><td>15件上限を維持 / 拡大</td><td>コンテキスト上限30,000字との整合。発言長の実測（EDA）が先。国会APIの1リクエスト上限仕様も要確認</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">B-3</td><td>重複発言の排除</td><td>①speechIDでdedupe ②なし（現状）</td><td>超検索時、類似クエリが同じ発言を重複取得するとコンテキストを浪費する。実測（EDA）で重複率を確認してから</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">B-4</td><td>検索0件時の扱い</td><td>①「見つかりません」文字列をLLMへ（現状） ②APIが明示的に404/空応答を返しフロントで案内</td><td>現状は0件でもLLMがツリーを「創作」し得る。ハルシネーション防止の観点で②が堅い。<strong>推奨: ②</strong>（O4と同時）</td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-c">
+    <h2><span class="sym">C</span> 議論木生成（Gemini構造化）</h2>
+    <p class="lede">議事録テキストを nodes / edges のグラフJSONへ変換する、本アプリの心臓部。</p>
+
+    <h3>目的</h3>
+    <p>数万字の議事録抜粋から「大テーマ（theme）を1つのルートとし、賛成（pro）・反対（con）・中立（neutral）・解決策（solution）が派生するツリー」を安定して生成する。ラベルは20文字以内、発言者名を source に付与。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li>プロンプトで「JSONのみ出力・コードブロック不要」を指示し、返答の <code>```json</code> フェンスを<strong>手動で剥がして</strong> <code>json.loads</code> → Pydantic（<code>ArgumentTree</code>）で検証。</li>
+      <li>議事録は先頭<strong>30,000字</strong>で切断してプロンプトに注入（後半の発言は黙って捨てられる）。</li>
+      <li>失敗時は (1) カレントディレクトリに <code>gemini_error.txt</code> を書き出し、(2) 「解析エラー」ノードを持つ<strong>ダミーツリーをHTTP 200で返却</strong>。フロントは正常なツリーとして描画するため、ユーザーはエラーと気づきにくい。</li>
+      <li>SDKは非推奨の <code>google-generativeai</code>。生成設定（temperature等）は未指定でモデル既定値に依存。</li>
+    </ul>
+
+    <h3>設計案</h3>
+    <ul>
+      <li><code>google-genai</code> SDKへ移行し、<code>response_schema</code> にPydanticモデルを直接渡す構造化出力へ変更 → フェンス剥がし・手動パースを全廃し、パース失敗そのものをほぼ根絶する。</li>
+      <li>失敗時はダミーツリーではなく明示的なエラー応答（例: 502 + 「AI解析に失敗しました。再試行してください」）を返し、フロントに再試行UIを設ける。</li>
+      <li><code>gemini_error.txt</code> の書き出しを廃止し、logger に一本化する。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">C-1</td><td>SDK移行（O1）</td><td>①google-genaiへ移行 ②現状維持</td><td>現SDKはサポート終了済み（2025-08-31）。移行は3関数の書き換えで完結し規模は小さい。<strong>推奨: ①を最優先</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">C-2</td><td>構造化出力（O3）</td><td>①response_schema ②プロンプト指示+手動パース（現状）</td><td>①はパースエラーを設計レベルで排除できる。O1とセットで実施するのが最小コスト。<strong>推奨: ①</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">C-3</td><td>解析失敗時の応答設計（O4）</td><td>①ダミーツリー200（現状） ②明示エラー+再試行UI</td><td>①はフォールトトレラントだがエラーが不可視。②はUX一手間だが誠実。<strong>推奨: ②</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">C-4</td><td>デバッグ残骸の削除（O4）</td><td><code>gemini_error.txt</code> 書き出しの廃止</td><td>本番でCWDにファイルを書くのは不適切。loggerで十分。<strong>推奨: 廃止</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">C-5</td><td>エッジへの関係ラベル付与</td><td>①edge に relation（反論/根拠/補足）を追加 ②現状（無ラベル）</td><td>議論構造の表現力が上がるが、モデル・プロンプト・描画の三点改修。D-3と連動。機能拡張フェーズで検討</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-d">
+    <h2><span class="sym">D</span> ツリー可視化（React Flow）</h2>
+    <p class="lede">生成されたグラフJSONを、賛否が一目でわかる自動レイアウト済みツリーとして描画する。</p>
+
+    <h3>目的</h3>
+    <p>「どの意見がどの意見への反論・解決策なのか」という構造的関係を視覚的に伝える。タイプ別の色分け（テーマ=青 / 賛成=緑 / 反対=赤 / 解決策=黄 / 中立=白）で議論の勢力図を直感的に把握できるようにする。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li>React Flow（@xyflow/react v12）+ dagre で上下方向（TB）の自動レイアウト。ノード幅250px・高さ80px想定。</li>
+      <li>dagre をコンポーネント内で <code>require('dagre')</code> により動的読込（ESM環境でのハック）。失敗時は3列グリッド配置にフォールバック。</li>
+      <li>ノードはReact Flowの default タイプに<strong>JSX埋め込みラベル</strong>としてスタイル済みdivを渡す実装（カスタムノードタイプ未使用）。</li>
+      <li>エッジは一律 <code>animated: true</code> + 閉矢印。MiniMap / Controls / Background 付き。</li>
+      <li>型は <code>any</code> が多く、フロント独自の <code>TreeData</code> interface とバックエンドのPydanticモデルが手動同期。</li>
+    </ul>
+
+    <h3>設計案</h3>
+    <ul>
+      <li><code>import dagre from 'dagre'</code>（または後継の <code>@dagrejs/dagre</code>）に正規化し、require ハックとtry/catchフォールバックを撤去。</li>
+      <li>カスタムノードタイプを定義してJSXラベル埋め込みを解消し、クリック領域・アクセシビリティを改善。</li>
+      <li>API型定義を <code>src/lib/types.ts</code> に集約し、<code>any</code> を排除（G-2と同時）。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">D-1</td><td>dagre読込の正規化（O7）</td><td>①静的import ②@dagrejs/dagre採用 ③現状</td><td>現状はビルド設定依存で壊れやすい。①か②の低コスト修正。<strong>推奨: ②</strong>（メンテ継続中のフォーク）</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">D-2</td><td>型安全化（O7）</td><td>API型の共有定義 / 現状（any）</td><td>バックエンドのレスポンス変更（例: A-1のexpanded_queries追加）時の破壊検知に必須</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">D-3</td><td>エッジの意味表現</td><td>関係タイプ別の線種・色 / 一律アニメーション（現状）</td><td>C-5（エッジラベル）が入る場合のみ意味を持つ。セットで判断</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">D-4</td><td>大規模ツリーのUX</td><td>ノード数上限指示 / サブツリー折りたたみ / 現状</td><td>現状はプロンプトでノード数を制御しておらず、巨大ツリーで視認性が落ちる可能性。実運用での観測後に判断</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-e">
+    <h2><span class="sym">E</span> 深掘り解説（RAG）</h2>
+    <p class="lede">ノードの論点について、背景・実際の発言引用・一次情報URL・対立意見をAIが解説する、本アプリの信頼性の要。</p>
+
+    <h3>目的</h3>
+    <p>「短い要約だけでは何も学べない・ファクトチェックできない」という課題（開発経緯に記録済み）への回答。解説には必ず発言引用と国会会議録の一次情報URLを含めることで、学習・調査ツールとしての信頼性を担保する。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li><code>POST /api/node_detail</code> が <code>{ query, node_label }</code> を受け、議事録を<strong>元クエリのみで再取得</strong>してから <code>generate_node_detail()</code> でMarkdown解説を生成。</li>
+      <li>プロンプトの要求事項: ①背景2〜3段落 ②関連発言の引用+URL必須 ③対立意見・課題の整理。</li>
+      <li>生成失敗時は「申し訳ありません…」という固定文字列をHTTP 200で返す。</li>
+      <li>キャッシュはなく、ノードをクリックして生成するたびに国会API再取得+LLM呼び出しが走る。</li>
+    </ul>
+
+    <div class="callout risk"><div class="ct">構造上の問題（R-3 / O2）</div>
+      超検索でツリーを作った場合、ツリーは「拡張3クエリ分の議事録」から生成されるが、深掘りは「元クエリ単独の議事録」で行われる。ノードによっては<strong>その論点の根拠となった発言が深掘り時のコンテキストに存在しない</strong>ことがあり、引用の欠落や別文脈での解説（実質ハルシネーション）につながる。</div>
+
+    <h3>設計案</h3>
+    <ul>
+      <li>検索時に取得した議事録コンテキストをサーバ側に短期キャッシュ（メモリ+TTL）し、レスポンスに <code>search_id</code> を含める。深掘りは <code>search_id</code> で<strong>同一コンテキスト</strong>を参照する。キャッシュ失効時のみ再取得にフォールバック。</li>
+      <li>副次効果: 深掘りのレイテンシ短縮（国会API往復の削減）と外部API負荷の低減。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">E-1</td><td>コンテキスト整合とキャッシュ（O2）</td><td>①search_id+サーバ側キャッシュ ②拡張クエリをフロント経由で引き回す ③現状</td><td>①はAPI契約の変更が小さく整合性を根本解決。②はキャッシュなしで整合のみ解決（レイテンシ改善なし）。<strong>推奨: ①</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">E-2</td><td>引用URLの実在検証</td><td>生成された解説中のURL・発言者名がコンテキスト内に実在するかの機械照合</td><td>「一次情報の信頼性」という本アプリの核心価値を守る仕組み。<span class="jump" data-jump="quality">品質・評価</span>のQ-2として管理</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">E-3</td><td>失敗時応答（O4）</td><td>①明示エラーステータス ②固定謝罪文を200で返す（現状）</td><td>C-3と同方針で統一する</td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-f">
+    <h2><span class="sym">F</span> バックエンド基盤</h2>
+    <p class="lede">FastAPI本体・設定・エラー処理・ログという土台部分。機能は薄いが、信頼性課題が集中している。</p>
+
+    <h3>目的</h3>
+    <p>2つのAPIエンドポイントを安全・観測可能な形で提供し、将来のデプロイ（O9）に耐える構成にする。</p>
+
+    <h3>現状</h3>
+    <dl class="kv">
+      <dt>エンドポイント</dt><dd><code>POST /api/search</code>・<code>POST /api/node_detail</code>（いずれも同期 def = スレッドプール実行）</dd>
+      <dt>CORS</dt><dd><code>localhost:3000 / 3001</code> のみ許可（ハードコード）</dd>
+      <dt>設定</dt><dd><code>.env</code> の <code>GEMINI_API_KEY</code> のみ。git除外は確認済み</dd>
+      <dt>エラー処理</dt><dd><code>except Exception → HTTPException(500, detail=str(e))</code>: 内部例外メッセージ（スタック情報の断片・キー未設定の事実など）が<strong>そのままフロントに露出</strong>する</dd>
+      <dt>ログ</dt><dd><code>logger</code> 呼び出しはあるが <code>logging</code> の設定（レベル・フォーマット）が無く、既定動作に依存</dd>
+    </dl>
+
+    <h3>設計案</h3>
+    <ul>
+      <li>例外を種別ごとに処理: 外部API失敗=502、AI解析失敗=502、キー未設定=起動時チェックで即死（fail fast）、想定外=500+固定メッセージ。詳細はログのみに残す。</li>
+      <li><code>pydantic-settings</code> で設定（APIキー・CORS許可オリジン・モデル名）を一元化し、環境変数で上書き可能にする。</li>
+      <li><code>logging.basicConfig</code>（またはuvicornのログ設定に統合）を明示。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">F-1</td><td>エラー設計の一新（O4）</td><td>種別ハンドリング+固定メッセージ / 現状（str(e)露出）</td><td>セキュリティ（内部情報漏えい）とUX（意味のあるエラー文言）の両面で必要。C-3/C-4/E-3/B-4を一括で扱う。<strong>推奨: 実施</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">F-2</td><td>設定管理</td><td>pydantic-settings / 現状（os.getenv散在）</td><td>モデル名が3箇所にハードコードされており、変更時の修正漏れリスクがある。デプロイ（O9）の前提でもある</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">F-3</td><td>ログ整備</td><td>basicConfig明示 / 現状</td><td>小粒。F-1と同時に実施</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">F-4</td><td>レート制限・リトライ</td><td>Exponential Backoff導入 / 現状（なし）</td><td>Gemini無料枠の429対策。docsでも既知課題。<span class="jump" data-jump="cross">横断論点</span>で管理</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="phase-g">
+    <h2><span class="sym">G</span> フロントエンド基盤</h2>
+    <p class="lede">Next.js側の構成・API接続・依存管理。UIは完成度が高い一方、接続まわりに構成上の課題がある。</p>
+
+    <h3>目的</h3>
+    <p>検索 → ツリー → 深掘りの一連のUXを提供しつつ、デプロイ可能で保守しやすいコード構成にする。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li><code>page.tsx</code> 単一ページに検索フォーム・ローディング・エラー表示・サイドバーを実装。UI状態管理はuseStateで素直に構成されている。</li>
+      <li>バックエンドURL <code>http://localhost:8000</code> がaxios呼び出し2箇所にハードコード。</li>
+      <li>APIレスポンスの型は <code>any</code>（<code>treeData</code>・<code>selectedNode</code> など）。</li>
+      <li><code>framer-motion</code> が依存に含まれるがソースで未使用（Tailwindの <code>animate-in</code> クラスはtailwindcss-animate系の記法だが、当該プラグインも未導入のため実質無効の可能性 — 要動作確認)。</li>
+    </ul>
+
+    <h3>設計案</h3>
+    <ul>
+      <li><code>src/lib/api.ts</code> にAPIクライアントを分離し、<code>NEXT_PUBLIC_API_URL</code>（既定値 localhost:8000）で接続先を切り替え。<code>.env.local.example</code> を追加。</li>
+      <li><code>src/lib/types.ts</code> にAPI型を定義し、コンポーネントの <code>any</code> を排除。</li>
+      <li>未使用依存（framer-motion）の削除。アニメーションが必要なら実際に使うか、CSSで代替。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">G-1</td><td>API URLの環境変数化（O5）</td><td>NEXT_PUBLIC_API_URL / ハードコード（現状）</td><td>デプロイの前提条件。修正は小粒でリスクなし。<strong>推奨: 即実施</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">G-2</td><td>API層の分離と型付け（O7）</td><td>lib/api.ts + types.ts / 現状</td><td>D-2と同時実施。API契約変更（O2のsearch_id等）の前にやると差分が綺麗</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">G-3</td><td>未使用依存の削除（O7）</td><td>framer-motion削除 / 保持</td><td>インストールサイズ・監査ノイズの削減。使用予定があるなら保持でも可</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">G-4</td><td>animate-inクラスの有効性確認</td><td>tailwindcss-animate導入 / クラス削除</td><td>サイドバーのスライドインが実際に効いているか動作確認してから判断</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="data-eda">
+    <h2>データソースEDA（国会会議録検索API）</h2>
+    <p class="lede">本プロジェクトの「データ本体」は国会会議録検索APIのレスポンスである。仕様の把握状況と、未実施の実測EDAを整理する。</p>
+
+    <h3>API仕様（把握済みの範囲）</h3>
+    <dl class="kv">
+      <dt>提供元</dt><dd>国立国会図書館 国会会議録検索システム 検索用API（認証不要・無料）</dd>
+      <dt>使用エンドポイント</dt><dd><code>/api/speech</code> — <strong>発言単位</strong>の出力。会議単位（<code>/api/meeting</code>）は初期に試行し、ノイズとコンテキスト圧迫を理由に不採用（決着済み論点 R1）</dd>
+      <dt>検索パラメータ</dt><dd><code>any</code>（発言本文の全文検索。スペース区切りは<strong>AND検索</strong>、OR検索は不可 → 超検索の動機）</dd>
+      <dt>取得形式</dt><dd><code>recordPacking=json</code></dd>
+      <dt>件数制御</dt><dd><code>maximumRecords</code>（現状の使い方は最大15。APIとしての上限値は要仕様確認）</dd>
+    </dl>
+
+    <h3>フィールド台帳（使用中 / 未活用）</h3>
+    <div class="tblwrap"><table>
+      <tr><th>フィールド</th><th>意味</th><th>現状</th><th>備考</th></tr>
+      <tr><td><code>nameOfMeeting</code></td><td>会議名（例: 内閣委員会）</td><td class="c"><span class="pill p-done">使用中</span></td><td>コンテキストの見出しに使用</td></tr>
+      <tr><td><code>date</code></td><td>会議開催日</td><td class="c"><span class="pill p-done">使用中</span></td><td>同上</td></tr>
+      <tr><td><code>speaker</code></td><td>発言者名</td><td class="c"><span class="pill p-done">使用中</span></td><td>ノードの source・引用の根拠</td></tr>
+      <tr><td><code>speech</code></td><td>発言本文</td><td class="c"><span class="pill p-done">使用中</span></td><td>RAGの本体。1発言が数千字になることもある</td></tr>
+      <tr><td><code>speechURL</code></td><td>発言単位の一次情報URL</td><td class="c"><span class="pill p-done">使用中</span></td><td>深掘り解説での引用元リンクの源泉</td></tr>
+      <tr><td><code>speechID</code></td><td>発言の一意ID</td><td class="c"><span class="pill p-todo">未活用</span></td><td>重複排除（B-3）のキーに最適</td></tr>
+      <tr><td><code>speakerGroup</code> ほか</td><td>会派・役職・院名・国会回次など</td><td class="c"><span class="pill p-todo">未活用</span></td><td>会派別の賛否分析・期間フィルタなど機能拡張の種。正確なフィールド一覧は公式仕様書で要再確認</td></tr>
+    </table></div>
+
+    <h3>コンテキスト整形の現状と含意</h3>
+    <pre><code>--- {会議名} ({日付}) [クエリ: {q}] ---
+URL: {speechURL}
+[{発言者}]: {発言本文}</code></pre>
+    <ul>
+      <li>上記形式で全発言を1本のテキストに連結し、<strong>先頭30,000字</strong>だけをプロンプトへ注入。超過分は<strong>黙って切り捨て</strong>られる（後方のクエリの発言ほど失われやすい）。</li>
+      <li>発言単位取得でも「挨拶・議事進行」などのノイズ発言はヒットし得る（キーワードが偶然含まれる場合）。</li>
+    </ul>
+
+    <h3>未実施の実測EDA（TODO）</h3>
+    <div class="callout"><div class="ct">実測しないと最適化の判断ができない項目</div>
+    <ol>
+      <li><strong>発言長の分布</strong>: 代表クエリ数件で1発言あたりの文字数分布を実測 → 30,000字に平均何件収まるかを把握し、O10（件数最適化）の判断材料にする。</li>
+      <li><strong>切り捨て発生率</strong>: 15件取得時に30,000字を超える頻度。</li>
+      <li><strong>超検索時の重複率</strong>: 拡張3クエリ間で同一speechIDが重複する割合 → B-3の要否判断。</li>
+      <li><strong>0件クエリ率</strong>: 拡張クエリが0件ヒットになる頻度 → A-2（拡張数）の判断材料。</li>
+      <li><strong>レスポンス構造の精読</strong>: 実レスポンス1件を保存して全フィールドを台帳化（上表の「要再確認」解消）。</li>
+    </ol></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="quality">
+    <h2>品質・評価</h2>
+    <p class="lede">「良い議論木・信頼できる解説」をどう定義し、どう継続的に測るか。現状は目視のみで、定量的な品質保証はゼロ。</p>
+
+    <h3>現状</h3>
+    <ul>
+      <li>評価指標・テストデータ・回帰確認の仕組みは存在しない。プロンプトやモデルを変更したとき、品質が改善したか劣化したかを判定する手段がない。</li>
+      <li>唯一のフォールトトレランスは「パース失敗時のダミーツリー」だが、これは品質保証ではなくエラー隠蔽に近い（C-3参照）。</li>
+    </ul>
+
+    <h3>リスクの整理（信頼性を損なう経路）</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>リスク</th><th>発生経路</th><th>影響</th></tr>
+      <tr><td class="c">H-1</td><td>発言・URLの捏造</td><td>LLMがコンテキストにない発言者名やURLを生成する</td><td>「一次情報にあたれる」という核心価値の毀損</td></tr>
+      <tr><td class="c">H-2</td><td>要約による意味の歪み</td><td>ラベル20字制限で発言の主旨が単純化・反転する</td><td>賛成/反対の誤分類。ツリーの信頼性低下</td></tr>
+      <tr><td class="c">H-3</td><td>論点の欠落</td><td>30,000字切断・取得15件制限で重要発言が入らない</td><td>「議論の全体像」が実際は部分像になる</td></tr>
+      <tr><td class="c">H-4</td><td>0件時の創作</td><td>「見つかりませんでした」文字列を渡してもLLMがツリーを生成し得る</td><td>存在しない議論の提示（B-4で対処）</td></tr>
+      <tr><td class="c">H-5</td><td>文脈違いの深掘り</td><td>超検索ツリーのノードを元クエリ単独の資料で解説（O2）</td><td>引用欠落・別文脈解説</td></tr>
+    </table></div>
+
+    <h3>設計案（評価の仕組み）</h3>
+    <ul>
+      <li><strong>ゴールデンクエリセット</strong>: 代表クエリ5〜10件（例: 消費税、AI規制、少子化対策、防衛費、育休）を固定し、変更のたびに同条件で生成して比較する。</li>
+      <li><strong>機械照合スクリプト</strong>: 生成物の引用URL・発言者名が取得コンテキストに実在するかを照合し、捏造率（H-1）を数値化する。ツリー側もノードのsourceを同様に照合。</li>
+      <li><strong>構造の妥当域チェック</strong>: ノード数・タイプ分布・ルート唯一性・エッジ整合（存在しないID参照がないか）の自動検査。Pydanticのバリデータでも一部実装可能。</li>
+    </ul>
+
+    <h3>論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>#</th><th>論点</th><th>選択肢</th><th>判断材料・方針</th><th>状態</th></tr>
+      <tr><td class="c">Q-1</td><td>品質指標の定義</td><td>捏造率 / 構造妥当性 / 被覆率（重要発言の反映率）など何を測るか</td><td>まず「捏造率0%」と「構造妥当性100%」の2つが低コストで効果大。被覆率は定義が難しく後回し。<strong>推奨: 2指標から開始</strong></td><td class="c"><span class="pill p-decide">要判断</span></td></tr>
+      <tr><td class="c">Q-2</td><td>URL・発言者の機械照合</td><td>照合スクリプトの実装 / 目視のみ（現状）</td><td>E-2と同一。O8のテスト整備に組み込むと自然</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+      <tr><td class="c">Q-3</td><td>回帰テストの形</td><td>ゴールデンクエリのスナップショット比較 / LLM-as-judge / なし</td><td>LLM出力は非決定的なのでスナップショット完全一致は不可。構造メトリクスの範囲比較が現実的</td><td class="c"><span class="pill p-todo">未着手</span></td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="cross">
+    <h2>横断論点</h2>
+    <p class="lede">単一フェーズに収まらない、プロジェクト全体に関わる技術判断。</p>
+
+    <h3>X-1. SDK移行: google-generativeai → google-genai（O1）</h3>
+    <ul>
+      <li><strong>事実関係</strong>: <code>google-generativeai</code>（現在使用中）はサポートが<strong>2025-08-31に終了済み</strong>。Googleは統一SDK <code>google-genai</code> への移行を公式に強く推奨している（2026-07-16に公式情報で確認）。</li>
+      <li><strong>移行のメリット</strong>: ①サポート復帰 ②<code>response_schema</code> によるPydantic直結の構造化出力（O3） ③async対応（O6のエンドポイントasync化と整合） ④新モデル・新機能への追随。</li>
+      <li><strong>影響範囲</strong>: <code>requirements.txt</code> 1行 + <code>api_gemini.py</code> の3関数。書き換えイメージ:</li>
+    </ul>
+    <pre><code># Before (google-generativeai / 非推奨)
+import google.generativeai as genai
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-3.5-flash')
+response = model.generate_content(prompt)
+
+# After (google-genai / 推奨・構造化出力つき)
+from google import genai
+client = genai.Client(api_key=api_key)
+response = client.models.generate_content(
+    model='gemini-3.5-flash',
+    contents=prompt,
+    config={
+        'response_mime_type': 'application/json',
+        'response_schema': ArgumentTree,   # Pydanticモデルを直接指定
+    },
+)
+tree = response.parsed  # パース済みオブジェクト</code></pre>
+
+    <h3>X-2. デプロイ戦略（O9）</h3>
+    <div class="tblwrap"><table>
+      <tr><th>案</th><th>構成</th><th>利点</th><th>難点</th></tr>
+      <tr><td class="c">案1</td><td>Vercel（front）+ Cloud Run（back）</td><td>Next.jsとの親和性最高。バックエンドはコンテナで自由度が高い。無料枠で開始可能</td><td>2サービスの管理。CORS・環境変数の整備（O5必須）</td></tr>
+      <tr><td class="c">案2</td><td>単一VPS（front+backを同居）</td><td>構成が単純。固定費のみ</td><td>運用（TLS・更新）が全部自前</td></tr>
+      <tr><td class="c">案3</td><td>Hugging Face Spaces等のPaaS一体型</td><td>デモ公開が最速</td><td>Next.jsフロントの本格ホスティングには不向き</td></tr>
+    </table></div>
+    <p>ポートフォリオ公開が目的なら<strong>案1が推奨</strong>。ただし公開時はGemini APIコスト・国会APIへの負荷・悪用対策（レート制限）の検討が必要。</p>
+
+    <h3>X-3. レート制限・コスト</h3>
+    <ul>
+      <li>LLM呼び出し回数: 通常検索=1回、超検索=2回（拡張+構造化）、深掘り=1回/ノード。</li>
+      <li>Gemini無料枠のRPM/RPD制限に達すると現状は生のエラーが露出する（F-1）。Exponential Backoffつきリトライ（F-4）と、429時の「混雑中」メッセージが必要。</li>
+      <li>国会APIは公共インフラであり、並列化（O6）実施時もクエリ数・頻度は節度を保つ（同時3リクエスト程度なら問題ない想定）。</li>
+    </ul>
+
+    <h3>X-4. セキュリティ</h3>
+    <div class="tblwrap"><table>
+      <tr><th>項目</th><th>現状</th><th>評価</th></tr>
+      <tr><td>APIキー管理</td><td><code>.env</code> + <code>load_dotenv</code>。git除外済み</td><td class="c"><span class="pill p-done">問題なし</span></td></tr>
+      <tr><td>エラー情報の露出</td><td><code>str(e)</code> をそのままフロントへ返却</td><td class="c"><span class="pill p-block">要対応 O4</span></td></tr>
+      <tr><td>CORS</td><td>localhost限定。公開時は許可オリジンの環境変数化が必要</td><td class="c"><span class="pill p-todo">デプロイ時</span></td></tr>
+      <tr><td>プロンプトインジェクション</td><td>コンテキストは公的議事録のみで、docsでもリスク低と判断済み。ただし議事録に「指示のような文」が含まれる可能性はゼロではない</td><td class="c"><span class="pill p-todo">許容中</span></td></tr>
+      <tr><td>公開時の悪用（コスト攻撃）</td><td>認証・レート制限なし。ローカルでは問題ないが公開時は必須</td><td class="c"><span class="pill p-todo">デプロイ時</span></td></tr>
+    </table></div>
+
+    <h3>参考リンク（2026-07-16 検証時）</h3>
+    <ul>
+      <li><a class="ext" href="https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash">Gemini 3.5 Flash | Google AI for Developers</a> — モデルのGA確認</li>
+      <li><a class="ext" href="https://ai.google.dev/gemini-api/docs/migrate">Migrate to the Google GenAI SDK</a> — 公式移行ガイド</li>
+      <li><a class="ext" href="https://github.com/google-gemini/deprecated-generative-ai-python">deprecated-generative-ai-python</a> — 旧SDKの非推奨宣言（サポート終了 2025-08-31）</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="agenda">
+    <h2>論点まとめ・次手</h2>
+    <p class="lede">全フェーズの論点をアジェンダとして集約。議論はこのページを起点に「1トピックずつ合意 → 実装 → PR → レポート更新」で進める。</p>
+
+    <h3>アジェンダ表（未決論点 O1〜O10）</h3>
+    <div class="tblwrap"><table>
+      <tr><th>No.</th><th>内容</th><th>詳細ページ</th><th>状態</th><th>推奨（叩き台）</th></tr>
+      <tr><td class="c"><strong>O1</strong></td><td>SDK移行（google-generativeai → google-genai）</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="cross">横断</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>サポート終了済みのため<strong>最優先で実施</strong>。O3・O4と同一PRで</td></tr>
+      <tr><td class="c"><strong>O2</strong></td><td>深掘りのコンテキスト整合 + サーバ側キャッシュ</td><td class="c"><span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td><code>search_id</code> 方式で実施。整合性・速度・API負荷を同時に解決</td></tr>
+      <tr><td class="c"><strong>O3</strong></td><td>構造化出力（response_schema）への切替</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-a">A</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>O1と同時実施。手動JSONパースを全廃</td></tr>
+      <tr><td class="c"><strong>O4</strong></td><td>エラー処理の一新（露出防止・ダミーツリー廃止・残骸削除・0件時の扱い）</td><td class="c"><span class="jump" data-jump="phase-f">F</span> / <span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>実施。C-3/C-4/E-3/B-4/F-1を一括で</td></tr>
+      <tr><td class="c"><strong>O5</strong></td><td>フロントのAPI URL環境変数化</td><td class="c"><span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>実施（小粒・リスクなし）。デプロイの前提</td></tr>
+      <tr><td class="c"><strong>O6</strong></td><td>国会API取得の非同期並列化</td><td class="c"><span class="jump" data-jump="phase-b">B</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>O2のキャッシュ導入と同じPRで実施が効率的</td></tr>
+      <tr><td class="c"><strong>O7</strong></td><td>フロント品質（型付け・dagre正規化・未使用依存削除）</td><td class="c"><span class="jump" data-jump="phase-d">D</span> / <span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>O2のAPI契約変更前に型定義（lib/types.ts）だけ先行してもよい</td></tr>
+      <tr><td class="c"><strong>O8</strong></td><td>テスト・CI整備（pytest + lint + GitHub Actions）</td><td class="c"><span class="jump" data-jump="quality">品質</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>最小構成（lint+build+ユニットテスト）から。品質照合（Q-2）も段階的に組み込む</td></tr>
+      <tr><td class="c"><strong>O9</strong></td><td>デプロイ戦略</td><td class="c"><span class="jump" data-jump="cross">横断</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>Vercel + Cloud Run案を推奨。ただし<strong>公開の要否自体がユーザー判断</strong></td></tr>
+      <tr><td class="c"><strong>O10</strong></td><td>取得件数・コンテキスト量の最適化</td><td class="c"><span class="jump" data-jump="phase-b">B</span> / <span class="jump" data-jump="data-eda">EDA</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>実測EDA（発言長分布）を先に実施してから判断</td></tr>
+    </table></div>
+
+    <h3>決着した論点</h3>
+    <div class="tblwrap"><table>
+      <tr><th>No.</th><th>決定</th><th>理由・経緯</th><th>決定時期</th></tr>
+      <tr><td class="c">R1</td><td>議事録の取得単位は「会議単位」ではなく<strong>「発言単位」</strong>（/api/speech）</td><td>会議全体はノイズ（挨拶・議事進行）が多くハルシネーションを誘発、コンテキストも圧迫。発言単位で情報密度と精度が劇的に改善した</td><td class="c">開発初期</td></tr>
+      <tr><td class="c">R2</td><td>結果表示はテキストリストではなく<strong>React Flowによるツリー可視化</strong></td><td>箇条書きでは反論・解決策という構造的関係が伝わらなかった。LLMにグラフJSONを直接生成させるアーキテクチャを採用</td><td class="c">開発初期</td></tr>
+      <tr><td class="c">R3</td><td>深掘り解説には<strong>一次情報URLの掲載を必須化</strong></td><td>要約だけではファクトチェック不能という欠陥への対応。speechURLをプロンプトに動的に埋め込み、掲載を強制</td><td class="c">開発中期</td></tr>
+      <tr><td class="c">R4</td><td>OR検索不可の制約は<strong>LLMクエリ拡張（超検索）</strong>で対応</td><td>国会APIはAND検索のみ。検索意図をLLMに解釈させ複数クエリを発行することで疑似OR検索を実現</td><td class="c">開発後期</td></tr>
+      <tr><td class="c">R5</td><td>モデル名 <code>gemini-3.5-flash</code> は<strong>変更不要</strong></td><td>「実在しないのでは」という懸念があったが、公式ドキュメントでGA（本番利用可）と確認。ただしSDK側の問題（O1）は別途残る</td><td class="c">2026-07-16</td></tr>
+    </table></div>
+
+    <h3>次手（推奨実行順）</h3>
+    <ol>
+      <li><strong>第1弾 — バックエンド信頼性一括（O1 + O3 + O4）</strong>: SDK移行・構造化出力・エラー処理を1本のPRで。互いに絡むため分割するとかえって手戻りが出る。</li>
+      <li><strong>第2弾 — 接続の外部化（O5）</strong>: 小粒なので第1弾と並行可。</li>
+      <li><strong>第3弾 — 検索体験の改善(O2 + O6)</strong>: search_idキャッシュ + 並列取得。API契約が変わるためフロント修正（O7の型定義）を含む。</li>
+      <li><strong>第4弾 — 品質基盤（O8 + Q-1/Q-2）</strong>: CI + ゴールデンクエリ + 照合スクリプト。</li>
+      <li><strong>第5弾 — 実測と最適化（O10 + EDA TODO）</strong>: 発言長・重複率の実測 → 件数チューニング。</li>
+      <li><strong>最終 — デプロイ（O9）</strong>: 公開するかの意思決定後。</li>
+    </ol>
+    <p>まずは<strong>第1弾（O1+O3+O4）の実施可否</strong>から合意を取りたい。詳細設計は <span class="jump" data-jump="phase-c">フェーズC</span> と <span class="jump" data-jump="cross">横断論点X-1</span> に記載済み。</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="plan">
+    <h2>実装計画</h2>
+    <p class="lede">論点の合意後に実行する作業のブレークダウン。各弾は独立したブランチ+PRで進め、マージごとに本レポートを更新する。</p>
+
+    <h3>作業ブレークダウンと検収基準（DoD）</h3>
+    <div class="tblwrap"><table>
+      <tr><th>優先度</th><th>作業</th><th>主な対象ファイル</th><th>検収基準（DoD）</th></tr>
+      <tr><td class="c"><span class="pill p-block">P0</span></td><td>SDK移行 + 構造化出力（O1+O3）</td><td><code>requirements.txt</code>・<code>api_gemini.py</code></td><td>google-genai使用でツリー生成・深掘り・クエリ拡張の3機能が動作。手動JSONパースのコードが消滅。response_schemaでパースエラーが発生しない</td></tr>
+      <tr><td class="c"><span class="pill p-block">P0</span></td><td>エラー処理一新（O4）</td><td><code>main.py</code>・<code>api_gemini.py</code>・<code>api_kokkai.py</code>・<code>page.tsx</code></td><td>内部例外メッセージがレスポンスに含まれない。gemini_error.txt廃止。解析失敗・0件時に明示的なエラーUI（再試行導線つき）が表示される</td></tr>
+      <tr><td class="c"><span class="pill p-decide">P1</span></td><td>API URL環境変数化（O5）</td><td><code>page.tsx</code>（→ <code>lib/api.ts</code>新設）・<code>.env.local.example</code></td><td>NEXT_PUBLIC_API_URL未設定時はlocalhost:8000で従来通り動作。設定時は指定先へ接続</td></tr>
+      <tr><td class="c"><span class="pill p-decide">P1</span></td><td>コンテキスト整合 + キャッシュ + 並列化（O2+O6）</td><td><code>main.py</code>・<code>api_kokkai.py</code>・<code>models.py</code>・<code>page.tsx</code></td><td>深掘りがツリー生成と同一コンテキストを参照する（超検索時も）。超検索の取得時間が短縮。キャッシュ失効時もエラーなく動作</td></tr>
+      <tr><td class="c"><span class="pill p-todo">P2</span></td><td>フロント品質（O7）</td><td><code>ArgumentTree.tsx</code>・<code>page.tsx</code>・<code>lib/types.ts</code>・<code>package.json</code></td><td>anyが主要パスから消滅。dagreが静的importで動作。npm installの未使用依存が削減</td></tr>
+      <tr><td class="c"><span class="pill p-todo">P2</span></td><td>テスト・CI（O8）</td><td><code>.github/workflows/ci.yml</code>・<code>backend/tests/</code></td><td>push/PR時にlint（ruff/eslint）・フロントbuild・バックエンドunit testが自動実行され、mainがグリーンに保たれる</td></tr>
+      <tr><td class="c"><span class="pill p-todo">P2</span></td><td>品質照合スクリプト（Q-2）</td><td><code>backend/tests/</code> or <code>scripts/</code></td><td>ゴールデンクエリに対し、生成物のURL・発言者の捏造率が算出できる</td></tr>
+      <tr><td class="c"><span class="pill p-todo">P3</span></td><td>実測EDA + 件数最適化（O10）</td><td><code>scripts/</code>・本レポートEDAページ</td><td>発言長分布・重複率・0件率が本レポートに記録され、件数設定に反映される</td></tr>
+      <tr><td class="c"><span class="pill p-todo">P3</span></td><td>デプロイ（O9）</td><td>インフラ設定一式</td><td>公開URLで全機能が動作。レート制限・コスト上限を設定済み</td></tr>
+    </table></div>
+
+    <h3>ブランチ・PR運用</h3>
+    <ul>
+      <li>作業は弾ごとに <code>feat/</code>・<code>fix/</code> ブランチを切り、GitHub（attt84/ARGTREE）へpush → PR → mainへマージ。</li>
+      <li>各PRの完了条件に「本レポートの該当ページ更新（論点の決着反映・ピル更新）」を含める。</li>
+      <li>本レポート自体も <code>ARTIFACTS/project_report.html</code> としてコミットし、履歴を残す。</li>
+    </ul>
+
+    <h3>中間成果物の契約（スキーマ）</h3>
+    <p>現行APIの応答スキーマ。O2実施時は <code>search_id</code>・<code>expanded_queries</code> の<strong>追加のみ</strong>を許容し、既存フィールドの意味変更・削除は行わない（変更する場合は版数を上げる）。</p>
+    <pre><code>// POST /api/search → ArgumentResponse
+{
+  "query": "AI規制",
+  "tree": {
+    "nodes": [
+      { "id": "node_1", "label": "AI規制", "type": "theme",
+        "source": "system" }
+      // type: "theme" | "pro" | "con" | "neutral" | "solution"
+    ],
+    "edges": [
+      { "id": "edge_1", "source": "node_1", "target": "node_2" }
+    ]
+  }
+  // O2実施後に追加予定: "search_id": "…", "expanded_queries": ["…"]
+}
+
+// POST /api/node_detail → NodeDetailResponse
+{
+  "node_label": "リスクベース規制の導入",
+  "detail_markdown": "### 背景と詳細…"
+}</code></pre>
+  </section>
+
+</div></main>
+</div>
+
+<script>
+  const links = document.querySelectorAll('nav a[data-target]');
+  const sections = document.querySelectorAll('main section');
+  function show(id){
+    sections.forEach(s => s.classList.toggle('show', s.id === id));
+    links.forEach(a => a.classList.toggle('active', a.dataset.target === id));
+    window.scrollTo({top:0});
+  }
+  links.forEach(a => a.addEventListener('click', () => show(a.dataset.target)));
+  document.querySelectorAll('[data-jump]').forEach(el =>
+    el.addEventListener('click', () => show(el.dataset.jump)));
+</script>
