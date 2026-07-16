@@ -47,6 +47,15 @@ def _parse_or_raise(response, schema: type[T]) -> T:
     return parsed
 
 
+def _log_and_wrap(e: Exception, message: str | None = None) -> LLMError:
+    """APIエラー・ネットワークエラーをログしてLLMErrorに包む。"""
+    if isinstance(e, genai_errors.APIError):
+        logger.error("Gemini API error (%s): %s", e.code, e.message)
+    else:
+        logger.error("Gemini call failed (%s): %s", type(e).__name__, e)
+    return LLMError(message) if message else LLMError()
+
+
 def generate_structured(prompt: str, schema: type[T], temperature: float = 0.2) -> T:
     settings = get_settings()
     try:
@@ -56,9 +65,10 @@ def generate_structured(prompt: str, schema: type[T], temperature: float = 0.2) 
             config=_structured_config(schema, temperature),
         )
         return _parse_or_raise(response, schema)
-    except genai_errors.APIError as e:
-        logger.error("Gemini API error (%s): %s", e.code, e.message)
-        raise LLMError() from e
+    except LLMError:
+        raise
+    except Exception as e:  # ネットワーク断等もLLMErrorに正規化する
+        raise _log_and_wrap(e) from e
 
 
 async def agenerate_structured(prompt: str, schema: type[T], temperature: float = 0.2) -> T:
@@ -70,9 +80,10 @@ async def agenerate_structured(prompt: str, schema: type[T], temperature: float 
             config=_structured_config(schema, temperature),
         )
         return _parse_or_raise(response, schema)
-    except genai_errors.APIError as e:
-        logger.error("Gemini API error (%s): %s", e.code, e.message)
-        raise LLMError() from e
+    except LLMError:
+        raise
+    except Exception as e:
+        raise _log_and_wrap(e) from e
 
 
 async def agenerate_text(prompt: str, temperature: float = 0.4) -> str:
@@ -87,9 +98,10 @@ async def agenerate_text(prompt: str, temperature: float = 0.4) -> str:
         if not text:
             raise LLMError("AIの応答が空でした")
         return text.strip()
-    except genai_errors.APIError as e:
-        logger.error("Gemini API error (%s): %s", e.code, e.message)
-        raise LLMError() from e
+    except LLMError:
+        raise
+    except Exception as e:
+        raise _log_and_wrap(e) from e
 
 
 def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
@@ -105,6 +117,5 @@ def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list
             ),
         )
         return [e.values for e in response.embeddings]
-    except genai_errors.APIError as e:
-        logger.error("Gemini embedding error (%s): %s", e.code, e.message)
-        raise LLMError("埋め込みの生成に失敗しました") from e
+    except Exception as e:
+        raise _log_and_wrap(e, "埋め込みの生成に失敗しました") from e
