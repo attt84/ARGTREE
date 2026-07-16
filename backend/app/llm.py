@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 _client: genai.Client | None = None
+_vertex_client: genai.Client | None = None
 
 
 def get_client() -> genai.Client:
@@ -29,6 +30,24 @@ def get_client() -> genai.Client:
             raise LLMError("GEMINI_API_KEYが設定されていません")
         _client = genai.Client(api_key=settings.gemini_api_key)
     return _client
+
+
+def get_vertex_client() -> genai.Client:
+    """Vertex AI経由のクライアント（ADC認証、プロジェクト課金）。
+
+    無料枠APIキーの日次上限（例: embed_content 100件/日）を回避するために使う。
+    """
+    global _vertex_client
+    if _vertex_client is None:
+        settings = get_settings()
+        if not settings.gcp_project:
+            raise LLMError("GCP_PROJECTが設定されていません")
+        _vertex_client = genai.Client(
+            vertexai=True,
+            project=settings.gcp_project,
+            location=settings.gcp_location,
+        )
+    return _vertex_client
 
 
 def _structured_config(schema: type[BaseModel], temperature: float) -> types.GenerateContentConfig:
@@ -105,10 +124,15 @@ async def agenerate_text(prompt: str, temperature: float = 0.4) -> str:
 
 
 def embed_texts(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
-    """テキスト群を埋め込みベクトルに変換する（1回の呼び出しは100件まで）。"""
+    """テキスト群を埋め込みベクトルに変換する（1回の呼び出しは100件まで）。
+
+    embedding_use_vertex=True の場合はVertex AI（ADC認証・プロジェクト課金）を使い、
+    Gemini Developer APIキーの無料枠日次上限（100件/日）を回避する。
+    """
     settings = get_settings()
+    client = get_vertex_client() if settings.embedding_use_vertex else get_client()
     try:
-        response = get_client().models.embed_content(
+        response = client.models.embed_content(
             model=settings.embedding_model,
             contents=texts,
             config=types.EmbedContentConfig(

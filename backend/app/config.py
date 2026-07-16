@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     embedding_model: str = "gemini-embedding-001"
     embedding_dim: int = 768
 
+    # 埋め込みをVertex AI経由にするか（無料枠の日次上限を回避する）。ADC認証を使うためAPIキー不要
+    embedding_use_vertex: bool = False
+    gcp_project: str = ""
+    gcp_location: str = "us-central1"
+
     # コーパスDB（SQLite）の置き場所
     db_path: str = str(BACKEND_DIR / "argtree.db")
 
