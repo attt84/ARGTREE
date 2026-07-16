@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -11,112 +11,94 @@ import {
   Node,
   Edge,
   MarkerType,
+  Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-
-interface TreeData {
-  nodes: { id: string; label: string; type: string; source?: string }[];
-  edges: { id: string; source: string; target: string }[];
-}
+import dagre from 'dagre';
+import type { ArgumentNode, ArgumentTreeData } from '../lib/types';
 
 interface ArgumentTreeProps {
-  data: TreeData | null;
-  onNodeClick?: (nodeData: { id: string; label: string; type: string; source?: string }) => void;
+  data: ArgumentTreeData | null;
+  onNodeClick?: (nodeData: ArgumentNode) => void;
 }
 
-// 簡単な自動レイアウト（簡易版のダグリッジ）
-const getLayoutedElements = (nodes: any[], edges: any[], direction = 'TB') => {
-  const isHorizontal = direction === 'LR';
-  const dagreGraph = new (require('dagre')).graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
+const NODE_WIDTH = 250;
+const NODE_HEIGHT = 80;
 
-  const nodeWidth = 250;
-  const nodeHeight = 80;
-
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 50 });
+// dagreによる自動レイアウト（上から下へのツリー配置）
+const layoutElements = (nodes: Node[], edges: Edge[]): Node[] => {
+  const graph = new dagre.graphlib.Graph();
+  graph.setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 50 });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   });
-
   edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
+    graph.setEdge(edge.source, edge.target);
   });
 
-  require('dagre').layout(dagreGraph);
+  dagre.layout(graph);
 
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = isHorizontal ? 'left' : 'top';
-    node.sourcePosition = isHorizontal ? 'right' : 'bottom';
-
-    // We are shifting the dagre node position (anchor=center center) to the top left
-    // so it matches the React Flow node anchor point (top left).
-    node.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
+  return nodes.map((node) => {
+    const { x, y } = graph.node(node.id);
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      // dagreは中心座標、React Flowは左上座標を使うため変換する
+      position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 },
     };
-
-    return node;
   });
+};
 
-  return { nodes, edges };
+const nodeStyle = (type: ArgumentNode['type']): string => {
+  switch (type) {
+    case 'pro':
+      return 'bg-green-50 border-green-400 text-green-900';
+    case 'con':
+      return 'bg-red-50 border-red-400 text-red-900';
+    case 'theme':
+      return 'bg-blue-600 border-blue-800 text-white font-bold';
+    case 'solution':
+      return 'bg-yellow-50 border-yellow-400 text-yellow-900';
+    default:
+      return 'bg-white border-gray-300';
+  }
 };
 
 const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   useEffect(() => {
     if (!data) return;
 
-    const initialNodes: Node[] = data.nodes.map((n) => {
-      let bgClass = 'bg-white border-gray-300';
-      if (n.type === 'pro') bgClass = 'bg-green-50 border-green-400 text-green-900';
-      if (n.type === 'con') bgClass = 'bg-red-50 border-red-400 text-red-900';
-      if (n.type === 'theme') bgClass = 'bg-blue-600 border-blue-800 text-white font-bold';
-      if (n.type === 'solution') bgClass = 'bg-yellow-50 border-yellow-400 text-yellow-900';
-
-      return {
-        id: n.id,
-        position: { x: 0, y: 0 },
-        data: {
-          label: (
-            <div className={`p-3 rounded-lg shadow-sm border-2 w-60 text-sm ${bgClass}`}>
-              <div className="font-semibold mb-1">{n.label}</div>
-              {n.source && <div className="text-xs opacity-75 truncate">発言: {n.source}</div>}
-            </div>
-          ),
-        },
-        type: 'default',
-        style: { border: 'none', background: 'transparent', padding: 0 },
-      };
-    });
+    const initialNodes: Node[] = data.nodes.map((n) => ({
+      id: n.id,
+      position: { x: 0, y: 0 },
+      data: {
+        label: (
+          <div className={`p-3 rounded-lg shadow-sm border-2 w-60 text-sm ${nodeStyle(n.type)}`}>
+            <div className="font-semibold mb-1">{n.label}</div>
+            {n.source && <div className="text-xs opacity-75 truncate">発言: {n.source}</div>}
+          </div>
+        ),
+      },
+      type: 'default',
+      style: { border: 'none', background: 'transparent', padding: 0 },
+    }));
 
     const initialEdges: Edge[] = data.edges.map((e) => ({
       id: e.id,
       source: e.source,
       target: e.target,
       animated: true,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-      },
+      markerEnd: { type: MarkerType.ArrowClosed },
     }));
 
-    try {
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-            initialNodes,
-            initialEdges,
-            'TB'
-        );
-        setNodes(layoutedNodes);
-        setEdges(layoutedEdges);
-    } catch (e) {
-        // Fallback without dagre if not installed
-        setNodes(initialNodes.map((n, i) => ({ ...n, position: { x: (i % 3) * 300, y: Math.floor(i / 3) * 150 } })));
-        setEdges(initialEdges);
-    }
-
+    setNodes(layoutElements(initialNodes, initialEdges));
+    setEdges(initialEdges);
   }, [data, setNodes, setEdges]);
 
   if (!data) {
@@ -136,7 +118,7 @@ const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
         onEdgesChange={onEdgesChange}
         onNodeClick={(_, node) => {
           if (onNodeClick && data) {
-            const originalNode = data.nodes.find(n => n.id === node.id);
+            const originalNode = data.nodes.find((n) => n.id === node.id);
             if (originalNode) onNodeClick(originalNode);
           }
         }}
@@ -144,7 +126,7 @@ const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
         attributionPosition="bottom-right"
       >
         <Controls />
-        <MiniMap zoomable pannable nodeClassName={(n) => 'bg-blue-500'} />
+        <MiniMap zoomable pannable />
         <Background color="#aaa" gap={16} />
       </ReactFlow>
     </div>
