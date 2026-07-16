@@ -180,7 +180,7 @@
 <main><div class="page">
   <div class="meta">
     <span>リポジトリ: <code>attt84/ARGTREE</code>（branch: <code>claude/argtree-review-b35720</code>）</span>
-    <span>最終更新: <strong>2026-07-16</strong>（第2版: 本格実装フェーズへの転換とマルチホップ検索構想を追加）</span>
+    <span>最終更新: <strong>2026-07-16</strong>（第3版: ハイブリッドGraphRAG実装完了を反映）</span>
   </div>
 
   <!-- ============================================================ -->
@@ -188,8 +188,8 @@
     <h2>プロジェクト概要</h2>
     <p class="lede">国会議事録をAIで構造化し「議論木」として可視化するWebアプリケーションの、現状把握と論点整理のための中核ドキュメント。</p>
 
-    <div class="callout"><div class="ct">フェーズ位置づけ（2026-07-16 方針決定）</div>
-      現在のコードベースは<strong>MVP</strong>であり、「無料APIのみ・コストゼロ」という制約下で意図的に簡素に作られたもの。ここからは<strong>コスト制約を撤廃した本格実装フェーズ</strong>に移行する。中核課題は「過去の関連事象を1つずつ手繰っていく」<strong>マルチホップ推論への対応</strong>であり、その検索アーキテクチャは<span class="jump" data-jump="strategy">マルチホップ検索構想</span>ページで扱う。</div>
+    <div class="callout"><div class="ct">フェーズ位置づけ（2026-07-16 更新）</div>
+      「無料APIのみ・コストゼロ」制約下のMVPを経て、同日中に<strong>本格実装フェーズのコア（ハイブリッドGraphRAG）を実装完了</strong>。中核課題「過去の関連事象を1つずつ手繰っていく」マルチホップ推論に対応する<strong>深掘り追跡モード</strong>が加わった。設計と実装状況は<span class="jump" data-jump="strategy">マルチホップ検索構想</span>、更新後の構成はREADMEを参照。フェーズ詳細ページ（A〜G）の「現状」記述はMVP時点の記録として残している。</div>
 
     <h3>何を作っているか</h3>
     <p><strong>国会議論木</strong>は、キーワード（例:「AI規制」）を入力すると、国立国会図書館の国会会議録検索APIから関連発言を取得し、Gemini（<code>gemini-3.5-flash</code>）で「大テーマ・賛成・反対・中立・解決策」のノードに分類した<strong>議論木（Argument Tree）</strong>を描画するアプリケーション。各ノードはクリックで深掘りでき、実際の発言引用と議事録の一次情報URLつきの解説をAIが生成する。</p>
@@ -206,7 +206,7 @@
     <div class="tblwrap"><table>
       <tr><th>層</th><th>技術</th><th>備考</th></tr>
       <tr><td class="c">フロントエンド</td><td>Next.js 16（App Router）/ React 19 / Tailwind CSS v3 / React Flow（@xyflow/react v12）+ dagre / axios / react-markdown</td><td><code>framer-motion</code> は依存に入っているが未使用</td></tr>
-      <tr><td class="c">バックエンド</td><td>FastAPI（Python）/ google-generativeai SDK / requests / pydantic / python-dotenv</td><td>SDKは<strong>非推奨・サポート終了済み</strong>（<span class="jump" data-jump="cross">横断論点</span>参照）</td></tr>
+      <tr><td class="c">バックエンド</td><td>FastAPI（Python）/ google-genai SDK / httpx / SQLite（WAL+FTS5）/ NumPy / pydantic-settings</td><td>2026-07-16 に google-genai へ移行済み（構造化出力・非同期対応）。コーパスDB＋マルチホップ検索を追加</td></tr>
       <tr><td class="c">外部API</td><td>国会会議録検索API（<code>kokkai.ndl.go.jp/api/speech</code>）/ Gemini API（<code>gemini-3.5-flash</code>）</td><td>モデル名はGA確認済み（2026-07-16検証）</td></tr>
     </table></div>
 
@@ -240,15 +240,17 @@
       以下の課題の多くは「コストゼロMVP」という当初制約の産物であり、欠陥というより意図的な簡素化である。本格実装フェーズではこれらの改修に加え、検索基盤そのものを<span class="jump" data-jump="strategy">マルチホップ対応のアーキテクチャ</span>へ作り替える。</div>
 
     <div class="cards">
-      <div class="card"><div class="num ok">3 / 3</div><div class="lbl">コア機能 実装済み</div><div class="note">可視化・深掘り・超検索</div></div>
-      <div class="card"><div class="num">2</div><div class="lbl">APIエンドポイント</div><div class="note">/api/search・/api/node_detail</div></div>
-      <div class="card"><div class="num wa">10</div><div class="lbl">未決論点（O1〜O10）</div><div class="note"><span class="jump" data-jump="agenda">論点まとめ</span>参照</div></div>
-      <div class="card"><div class="num ng">0</div><div class="lbl">自動テスト / CI</div><div class="note">いずれも未整備</div></div>
-      <div class="card"><div class="num ng">EOL</div><div class="lbl">LLM SDKサポート</div><div class="note">2025-08-31 終了済み</div></div>
-      <div class="card"><div class="num wa">未</div><div class="lbl">デプロイ</div><div class="note">ローカル起動前提の構成</div></div>
+      <div class="card"><div class="num ok">4 / 4</div><div class="lbl">コア機能 実装済み</div><div class="note">議論木・深掘り・超検索・深掘り追跡（マルチホップ）</div></div>
+      <div class="card"><div class="num">4</div><div class="lbl">APIエンドポイント</div><div class="note">search / node_detail / deep_search / corpus_status</div></div>
+      <div class="card"><div class="num wa">4</div><div class="lbl">未決論点（残）</div><div class="note">S5（暫定決着）・O7残余・O8・O9</div></div>
+      <div class="card"><div class="num ng">0</div><div class="lbl">自動テスト / CI</div><div class="note">いずれも未整備（O8）</div></div>
+      <div class="card"><div class="num ok">解消</div><div class="lbl">LLM SDKサポート</div><div class="note">google-genaiへ移行済み（2026-07-16）</div></div>
+      <div class="card"><div class="num wa">未</div><div class="lbl">デプロイ</div><div class="note">ローカル起動前提の構成（O9）</div></div>
     </div>
 
     <h3>主要な停滞要因・リスク（優先度順）</h3>
+    <div class="callout"><div class="ct">2026-07-16 実装により解消</div>
+      R-1（SDK移行）とR-2（URLハードコード）は本格実装で<strong>解消済み</strong>。R-3はライブ議論木モードには残るが、新設の深掘り追跡モード（コーパスDB上で完結）では発生しない。R-4（品質評価）は未解消で、次の主要論点。以下はMVP時点の記録として残す。</div>
     <div class="callout risk"><div class="ct">R-1. 非推奨SDKへの依存（最重要）</div>
       バックエンドが依存する <code>google-generativeai</code> はサポートが2025年8月31日に終了しており、後継の統一SDK <code>google-genai</code> への移行が公式に強く推奨されている。現状動作はしているが、障害時の修正手段がなく、新機能（堅牢な構造化出力・非同期など）も使えない。→ 論点 <strong>O1</strong></div>
     <div class="callout warn"><div class="ct">R-2. デプロイ不能な構成</div>
@@ -266,6 +268,7 @@
       <tr><td class="c">2026-07-16</td><td><code>.env</code>（APIキー）のgit除外確認</td><td><span class="pill p-done">問題なし</span> backend/frontend両方の .gitignore で除外済み</td></tr>
       <tr><td class="c">2026-07-16</td><td>未使用依存の確認</td><td><span class="pill p-todo">軽微</span> <code>framer-motion</code> がフロントのソースで未使用（削除候補）</td></tr>
       <tr><td class="c">2026-07-16</td><td>方針転換の記録</td><td><span class="pill p-done">決定</span> 現行実装をMVP完了と位置づけ、コスト制約を撤廃した本格実装フェーズへ移行。中核課題＝マルチホップ推論。GraphRAGアプローチ（ユーザー提案）を軸に検討開始</td></tr>
+      <tr><td class="c">2026-07-16</td><td>本格実装の実施（S1〜S4決定・全部委任）</td><td><span class="pill p-done">完了</span> ハイブリッドGraphRAG（Phase 0〜3）を実装: google-genai移行・コーパスDB（SQLite+FTS5）・明示参照グラフ・埋め込み索引・マルチホップ検索API・深掘り追跡UI。ライブ3機能はHTTP 200で回帰確認済み</td></tr>
     </table></div>
   </section>
 
@@ -674,6 +677,9 @@ URL: {speechURL}
     <h2>マルチホップ検索構想（GraphRAG）</h2>
     <p class="lede">本格実装フェーズの中核課題。「過去の関連事象を1つずつ手繰っていく」推論に、検索アーキテクチャがどう応えるかの設計議論。</p>
 
+    <div class="callout"><div class="ct">2026-07-16 決定・実装完了</div>
+      S1〜S4はユーザー委任のもと<strong>推奨案どおり決定し、実装済み</strong>：ハイブリッド三層構成（S1）／コーパスは日付範囲指定のCLIで段階拡大（S2、初期投入は2026年1月〜7月）／メタデータ＋ルールベース明示参照の段階構築（S3、因果の解釈はホップ時にLLMがオンラインで実施）／エージェント型トラバーサル（S4）。S5は「<strong>Gemini API直接利用＋SQLiteローカル</strong>」で暫定決着 — 全推論（生成・埋め込み）がAPI経由で完結し自前ホストするモデルが無いため、<strong>GPU VMは建てない</strong>と判断。スケール時にVertex AI切替・グラフDB移行を再検討する。実装の構成はREADMEを参照。</div>
+
     <h3>前提の転換（2026-07-16 決定）</h3>
     <div class="tblwrap"><table>
       <tr><th>観点</th><th>MVPフェーズ（〜現在）</th><th>本格実装フェーズ（これから）</th></tr>
@@ -809,26 +815,26 @@ tree = response.parsed  # パース済みオブジェクト</code></pre>
     <h3>戦略論点（S1〜S5・本格実装フェーズの方向決め）</h3>
     <div class="tblwrap"><table>
       <tr><th>No.</th><th>内容</th><th>詳細ページ</th><th>状態</th><th>推奨（叩き台）</th></tr>
-      <tr><td class="c"><strong>S1</strong></td><td>検索アーキテクチャの方向性（ハイブリッドGraphRAG採用可否）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td><strong>採用を推奨</strong>。ベクトル=入口・グラフ=ホップ・エージェント=経路判断の三層構成</td></tr>
-      <tr><td class="c"><strong>S2</strong></td><td>コーパス取り込み範囲（全期間／直近N年／テーマ限定）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>直近10年から開始して規模を実測し、段階拡大</td></tr>
-      <tr><td class="c"><strong>S3</strong></td><td>グラフスキーマと構築方式（メタデータ先行 vs LLM抽出一括）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>メタデータエッジ（LLM不要）→ 明示参照 → 因果の順で段階構築</td></tr>
-      <tr><td class="c"><strong>S4</strong></td><td>マルチホップの実行方式（エージェント型 vs 事前計算）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>エージェント型トラバーサルから開始</td></tr>
-      <tr><td class="c"><strong>S5</strong></td><td>インフラ・モデル選定（DB／ベクトル／グラフストア／抽出モデル）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>S1〜S3合意後に具体化</td></tr>
+      <tr><td class="c"><strong>S1</strong></td><td>検索アーキテクチャの方向性（ハイブリッドGraphRAG採用可否）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-done">決定 07-16</span></td><td><strong>採用・実装済み</strong>。ベクトル=入口・グラフ=ホップ・エージェント=経路判断の三層構成</td></tr>
+      <tr><td class="c"><strong>S2</strong></td><td>コーパス取り込み範囲（全期間／直近N年／テーマ限定）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-done">決定 07-16</span></td><td>日付範囲指定のingest CLIで段階拡大可能に。初期投入は2026年1月〜7月（数万発言）</td></tr>
+      <tr><td class="c"><strong>S3</strong></td><td>グラフスキーマと構築方式（メタデータ先行 vs LLM抽出一括）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-done">決定 07-16</span></td><td>実装済み: メタデータ＋ルールベース明示参照（法案・法律・事件・制度）。因果の解釈はホップ時のLLM判断で代替</td></tr>
+      <tr><td class="c"><strong>S4</strong></td><td>マルチホップの実行方式（エージェント型 vs 事前計算）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-done">決定 07-16</span></td><td>実装済み: 各ホップでLLMが構造化出力（finding／complete／next_focus）で判断</td></tr>
+      <tr><td class="c"><strong>S5</strong></td><td>インフラ・モデル選定（DB／ベクトル／グラフストア／抽出モデル）</td><td class="c"><span class="jump" data-jump="strategy">構想</span></td><td class="c"><span class="pill p-doing">暫定決着</span></td><td>Gemini API直接利用＋SQLiteローカルで稼働。GPU VMは不要と判断（自前ホストするモデルなし）。スケール時にVertex AI／グラフDBを再検討</td></tr>
     </table></div>
 
     <h3>アジェンダ表（未決論点 O1〜O10・MVP由来の改修）</h3>
     <div class="tblwrap"><table>
       <tr><th>No.</th><th>内容</th><th>詳細ページ</th><th>状態</th><th>推奨（叩き台）</th></tr>
-      <tr><td class="c"><strong>O1</strong></td><td>SDK移行（google-generativeai → google-genai）</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="cross">横断</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>サポート終了済みのため<strong>最優先で実施</strong>。O3・O4と同一PRで</td></tr>
-      <tr><td class="c"><strong>O2</strong></td><td>深掘りのコンテキスト整合 + サーバ側キャッシュ</td><td class="c"><span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td><code>search_id</code> 方式が当初案。<strong>S1採用時はPhase 1（コーパスDB化）に吸収</strong>され、個別実装は不要になる見込み</td></tr>
-      <tr><td class="c"><strong>O3</strong></td><td>構造化出力（response_schema）への切替</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-a">A</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>O1と同時実施。手動JSONパースを全廃</td></tr>
-      <tr><td class="c"><strong>O4</strong></td><td>エラー処理の一新（露出防止・ダミーツリー廃止・残骸削除・0件時の扱い）</td><td class="c"><span class="jump" data-jump="phase-f">F</span> / <span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>実施。C-3/C-4/E-3/B-4/F-1を一括で</td></tr>
-      <tr><td class="c"><strong>O5</strong></td><td>フロントのAPI URL環境変数化</td><td class="c"><span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>実施（小粒・リスクなし）。デプロイの前提</td></tr>
-      <tr><td class="c"><strong>O6</strong></td><td>国会API取得の非同期並列化</td><td class="c"><span class="jump" data-jump="phase-b">B</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>当初はO2と同時実施予定だったが、<strong>S1採用時はPhase 1の取り込みパイプラインに吸収</strong>見込み</td></tr>
-      <tr><td class="c"><strong>O7</strong></td><td>フロント品質（型付け・dagre正規化・未使用依存削除）</td><td class="c"><span class="jump" data-jump="phase-d">D</span> / <span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>O2のAPI契約変更前に型定義（lib/types.ts）だけ先行してもよい</td></tr>
+      <tr><td class="c"><strong>O1</strong></td><td>SDK移行（google-generativeai → google-genai）</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="cross">横断</span></td><td class="c"><span class="pill p-done">完了 07-16</span></td><td>google-genaiへ移行済み（llm.py新設・同期/非同期の両対応）</td></tr>
+      <tr><td class="c"><strong>O2</strong></td><td>深掘りのコンテキスト整合 + サーバ側キャッシュ</td><td class="c"><span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-done">吸収済み</span></td><td>コーパスDB化（Phase 1）に吸収。深掘り追跡はDB上で完結し、コンテキスト不一致は発生しない</td></tr>
+      <tr><td class="c"><strong>O3</strong></td><td>構造化出力（response_schema）への切替</td><td class="c"><span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-a">A</span></td><td class="c"><span class="pill p-done">完了 07-16</span></td><td>response_schema（Pydantic直渡し）へ全面移行。手動JSONパースを全廃</td></tr>
+      <tr><td class="c"><strong>O4</strong></td><td>エラー処理の一新（露出防止・ダミーツリー廃止・残骸削除・0件時の扱い）</td><td class="c"><span class="jump" data-jump="phase-f">F</span> / <span class="jump" data-jump="phase-c">C</span> / <span class="jump" data-jump="phase-e">E</span></td><td class="c"><span class="pill p-done">完了 07-16</span></td><td>例外種別ハンドラ（502/404/409）・固定メッセージ化・gemini_error.txt廃止・0件時404を実装</td></tr>
+      <tr><td class="c"><strong>O5</strong></td><td>フロントのAPI URL環境変数化</td><td class="c"><span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-done">完了 07-16</span></td><td>NEXT_PUBLIC_API_URL対応（lib/api.ts新設）</td></tr>
+      <tr><td class="c"><strong>O6</strong></td><td>国会API取得の非同期並列化</td><td class="c"><span class="jump" data-jump="phase-b">B</span></td><td class="c"><span class="pill p-done">完了 07-16</span></td><td>httpx＋asyncio.gatherで並列化（ライブ検索）。取り込みはページング＋スロットルで実装</td></tr>
+      <tr><td class="c"><strong>O7</strong></td><td>フロント品質（型付け・dagre正規化・未使用依存削除）</td><td class="c"><span class="jump" data-jump="phase-d">D</span> / <span class="jump" data-jump="phase-g">G</span></td><td class="c"><span class="pill p-doing">大半完了</span></td><td>types.ts/api.ts新設・any排除・dagre静的import化・framer-motion削除済み。残: lint/CI整備の細部（O8と合流）</td></tr>
       <tr><td class="c"><strong>O8</strong></td><td>テスト・CI整備（pytest + lint + GitHub Actions）</td><td class="c"><span class="jump" data-jump="quality">品質</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td>最小構成（lint+build+ユニットテスト）から。品質照合（Q-2）も段階的に組み込む</td></tr>
       <tr><td class="c"><strong>O9</strong></td><td>デプロイ戦略</td><td class="c"><span class="jump" data-jump="cross">横断</span></td><td class="c"><span class="pill p-decide">要判断</span></td><td>Vercel + Cloud Run案を推奨。ただし<strong>公開の要否自体がユーザー判断</strong></td></tr>
-      <tr><td class="c"><strong>O10</strong></td><td>取得件数・コンテキスト量の最適化</td><td class="c"><span class="jump" data-jump="phase-b">B</span> / <span class="jump" data-jump="data-eda">EDA</span></td><td class="c"><span class="pill p-todo">未着手</span></td><td><strong>S2（コーパス範囲）・S3（インデックス設計）に吸収</strong>見込み。実測EDAはPhase 1で実施</td></tr>
+      <tr><td class="c"><strong>O10</strong></td><td>取得件数・コンテキスト量の最適化</td><td class="c"><span class="jump" data-jump="phase-b">B</span> / <span class="jump" data-jump="data-eda">EDA</span></td><td class="c"><span class="pill p-done">吸収済み</span></td><td>コーパスDB化により解消（取得件数15件の制約はライブモードのみに残る概念となった）</td></tr>
     </table></div>
 
     <h3>決着した論点</h3>
@@ -841,17 +847,14 @@ tree = response.parsed  # パース済みオブジェクト</code></pre>
       <tr><td class="c">R5</td><td>モデル名 <code>gemini-3.5-flash</code> は<strong>変更不要</strong></td><td>「実在しないのでは」という懸念があったが、公式ドキュメントでGA（本番利用可）と確認。ただしSDK側の問題（O1）は別途残る</td><td class="c">2026-07-16</td></tr>
     </table></div>
 
-    <h3>次手（推奨実行順・2026-07-16改訂）</h3>
+    <h3>次手（2026-07-16 実装完了後）</h3>
     <ol>
-      <li><strong>第1弾 — 戦略合意（S1〜S3）</strong>: 検索アーキテクチャ（ハイブリッドGraphRAG）・コーパス範囲・グラフスキーマの方向性を合意する。以降の全実装の前提。</li>
-      <li><strong>第2弾 — Phase 0: LLM基盤整備（O1 + O3 + O4、O5併走）</strong>: SDK移行・構造化出力・エラー処理を1本のPRで。新アーキテクチャでもLLM呼び出し層として必須であり、S1の結論に依存しない。</li>
-      <li><strong>第3弾 — Phase 1: コーパス取り込み基盤（S2）</strong>: 国会APIから一括取得しDB化。O2/O6/O10はここに吸収。規模・発言長・重複率の実測EDAを同時に実施し、<span class="jump" data-jump="data-eda">EDAページ</span>に記録。</li>
-      <li><strong>第4弾 — Phase 2: ハイブリッドインデックス構築（S3・S5）</strong>: ベクトル索引＋メタデータエッジ→明示参照→因果エッジの段階構築。</li>
-      <li><strong>第5弾 — Phase 3: マルチホップ検索エンジン＋UI拡張（S4）</strong>: エージェント型トラバーサルと因果チェーンの可視化。</li>
-      <li><strong>並行 — 品質基盤（O8 + Q系）</strong>: マルチホップQAゴールデンセットを早期に整備（Phase 3の評価に必須）。</li>
-      <li><strong>最終 — デプロイ（O9）</strong>: アーキテクチャ確定後に構成を再検討。</li>
+      <li><strong>コーパス範囲の拡大（S2の運用）</strong>: 現在は2026年1月〜7月。<code>python -m app.ingest</code> を過去に向けて段階実行し、遡れる深さを広げる（例: まず直近3年→10年）。埋め込みも <code>build_embeddings</code> で段階追加。</li>
+      <li><strong>品質基盤（O8 + Q系）</strong>: マルチホップQAゴールデンセット（2〜3ホップ必要な問い）・引用URL/発言者の機械照合・CI（lint+build+test）。</li>
+      <li><strong>マルチホップの磨き込み</strong>: 因果エッジのLLM事前抽出（S3の第3層）、探索の分岐（複数経路の並行追跡）、頻出パスのキャッシュ。</li>
+      <li><strong>デプロイ（O9）</strong>: 公開の要否判断後に。公開時はレート制限・コスト上限が必須。</li>
     </ol>
-    <p>まずは<strong>S1（検索アーキテクチャの方向性）の合意</strong>から。推奨案と根拠は<span class="jump" data-jump="strategy">マルチホップ検索構想</span>に記載済み。</p>
+    <p>実装の詳細な状態は<span class="jump" data-jump="strategy">マルチホップ検索構想</span>とREADMEを参照。</p>
   </section>
 
   <!-- ============================================================ -->

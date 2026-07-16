@@ -2,83 +2,101 @@
 
 ![国会議論木 UI](./docs/images/img_tree.png)
 
-**国会議論木** は、国会議事録の膨大なテキストデータをAI（Gemini 3.5 Flash）を用いて瞬時に構造化し、「議論木（Argument Tree）」として可視化するWebアプリケーションです。
+**国会議論木** は、国会議事録の膨大なテキストデータをAI（Gemini）で構造化・探索するWebアプリケーションです。2つのモードを備えています。
 
-「特定のキーワードに対して、どのような賛成・反対・解決策が議論されているのか」を視覚的に把握できるほか、各論点の実際の議事録ソース（一次情報）へのアクセスと深掘り解説を可能にします。
+1. **議論木モード** — キーワードに対する賛成・反対・解決策の構造を「議論木（Argument Tree）」として即時に可視化
+2. **深掘り追跡モード** — 「なぜ〜になったのか」という問いに対し、コーパスDB上で**過去の関連事象を1つずつ手繰る（マルチホップ検索）**ことで、時系列・因果の鎖を辿った調査結果を提示
 
-## 📖 使い方 (Usage Flow)
-
-### 1. 初期画面と検索
-キーワード（例：「AI規制」）を入力して検索ボタンを押します。「超検索」にチェックを入れると、AIがキーワードを拡張し、多角的な視点から議事録を取得します。
-![初期画面](./docs/images/img_initial.png)
-
-### 2. 議論の全体像を把握
-数万文字に及ぶ議事録が解析され、瞬時に「議論木（ツリー）」として視覚化されます。緑枠は賛成や推進、赤枠は反対や懸念事項を示します。
-![検索後の全体像](./docs/images/img_tree.png)
-
-### 3. 論点の深掘り
-気になるノードをクリックすると、右側にサイドバーが展開されます。「AIで深掘り解説を生成」ボタンを押すと、国会での実際の議論背景をAIが解説します。
-![サイドバーで深掘り](./docs/images/img_loading.png)
-
-### 4. 背景と詳細の解説
-なぜその論点が浮上したのか、法律や社会背景を交えて詳細に解説されます。
-![その結果の表示](./docs/images/img_detail1.png)
-
-### 5. 一次情報へのアクセス
-解説の中には、**実際の発言者の引用**と、その発言が記録されている国会議事録の**一次情報URL**が必ず提示されます。これにより確実なファクトチェックと学習が可能です。
-![引用や一次情報](./docs/images/img_detail2.png)
+いずれも、各論点・各発見には国会議事録の**一次情報URL**が付き、ファクトチェック可能です。
 
 ## ✨ 主な機能 (Features)
 
-1. **議論の可視化 (Argument Tree)**
-   - 国会図書館APIから取得した生の議事録データをAIが解析し、「大テーマ」「賛成」「反対」「補足」「解決策」のノードに分類してツリー構造で描画します。
-2. **AIによる論点の深掘り (RAG実装)**
-   - ツリー上のノードをクリックすると、その論点に関する「背景・文脈」「関連する実際の発言（一次情報URL付き）」「対立意見や課題」をGeminiが議事録データを参照（RAG）して解説レポートとして生成します。
-3. **超検索 (Query Expansion)**
-   - 単一のキーワード検索だけでなく、AIが検索意図を汲み取って関連キーワードを複数生成し、並列で国会APIからデータを収集。一問一答の枠を超えた「周辺議論」も網羅的に抽出できます。
+### 1. 議論の可視化 (Argument Tree)
+国会会議録検索APIからライブ取得した議事録をAIが解析し、「大テーマ」「賛成」「反対」「補足」「解決策」のノードに分類してツリー描画します。ノードをクリックすると、背景・引用・対立意見の深掘り解説（一次情報URL付き）を生成できます。
+
+### 2. 超検索 (Query Expansion)
+AIが検索意図を汲み取って関連キーワードを複数生成し、並列で議事録を収集。国会APIの「AND検索のみ」という制約を超えて周辺議論を網羅します。使用した拡張クエリはUIに表示されます。
+
+### 3. 深掘り追跡 (Multi-hop Search / ハイブリッドGraphRAG)
+「なぜ政治資金規正法が改正されたのか」のような問いは、直近の審議 → 数年前の事件 → さらに前の法改正…と**関連事象を遡る多段の探索**が必要で、単発のベクトル検索やキーワード検索では届きません。本アプリは次の三層で解決します。
+
+- **全文検索（SQLite FTS5）＋ ベクトル検索（Gemini Embedding）** — 各ホップの証拠取得（入口の発見）
+- **知識グラフ（エンティティ言及）** — 発言から抽出した法案・法律・事件・制度のエンティティを辿って、別時期・別文脈の議論へジャンプ
+- **エージェント型トラバーサル（Gemini）** — 各ホップで「分かったこと」と「次に遡るべき焦点」を判断し、調査の鎖を構成
+
+結果は「ホップごとの発見＋根拠発言（一次情報URL付き）＋統合解説」として表示されます。
+
+## 🏗 アーキテクチャ
+
+```
+【ライブ系（議論木モード）】
+検索キーワード → (超検索: クエリ拡張) → 国会会議録検索API（並列） → Gemini構造化出力 → React Flowツリー
+
+【コーパス系（深掘り追跡モード）】
+[オフライン]  ingest（日付範囲の全発言取得） → SQLite（speeches + FTS5）
+              build_graph（法案・事件等の明示参照抽出） → entities / mentions
+              build_embeddings（Gemini Embedding） → ベクトル索引
+[オンライン]  問い → [FTS + ベクトル + グラフ近傍] → LLMがホップ判断 → …（繰り返し）→ 調査の鎖 + 統合解説
+```
 
 ## 🛠 技術スタック (Tech Stack)
 
 ### Frontend
-- **Framework**: Next.js (App Router), React
-- **Styling**: Tailwind CSS
-- **Visualization**: React Flow (xyflow)
-- **Data Fetching**: Axios
+- Next.js (App Router) / React / Tailwind CSS
+- React Flow (@xyflow/react) + dagre — 議論木の自動レイアウト
+- axios / react-markdown
 
 ### Backend
-- **Framework**: FastAPI (Python)
-- **AI Model**: Google Gemini 3.5 Flash
-- **External API**: 国立国会図書館 国会会議録検索API
-- **Architecture**: Retrieval-Augmented Generation (RAG) による動的プロンプティング
+- FastAPI (Python 3.10+)
+- **google-genai SDK**（構造化出力 response_schema / 非同期対応）
+- Gemini（生成: `gemini-3.5-flash` / 埋め込み: `gemini-embedding-001`）
+- SQLite（WAL + FTS5 trigram 全文検索）+ NumPy（コサイン類似検索）
+- httpx（国会会議録検索APIの非同期・並列取得）
 
 ## 🚀 ローカルでのセットアップ (Getting Started)
 
 ### 前提条件
-- Node.js (v18+)
-- Python (v3.10+)
-- Gemini API Key
+- Node.js (v18+) / Python (v3.10+) / Gemini API Key
 
-### バックエンドの起動
+### 1. バックエンドの起動
 ```bash
 cd backend
 python -m venv venv
-# Windowsの場合
-.\venv\Scripts\activate
-# Mac/Linuxの場合
-# source venv/bin/activate
+.\venv\Scripts\activate      # Windows
+# source venv/bin/activate   # Mac/Linux
 
 pip install -r requirements.txt
 
-# .envファイルを作成し、GEMINI_API_KEYを設定してください
+# .envファイルを作成し、GEMINI_API_KEYを設定
 # 例: GEMINI_API_KEY="your_api_key_here"
 
 uvicorn app.main:app --reload
 ```
 
-### フロントエンドの起動
+議論木モードはこれだけで動作します。
+
+### 2. コーパスの構築（深掘り追跡モードに必要）
+```bash
+cd backend  # venv有効化済みの状態で
+
+# ① 発言コーパスの取り込み（日付範囲は自由。中断しても再実行で続きから）
+python -m app.ingest --from 2026-01-01 --until 2026-07-16
+
+# ② 知識グラフの構築（LLM不要・何度でも無コストで再実行可）
+python -m app.build_graph
+
+# ③ ベクトル索引の構築（新しい発言から順。まず直近分だけでも動作する）
+python -m app.build_embeddings --limit 3000
+```
+
+> 取り込み範囲を過去に広げるほど、深掘り追跡が遡れる範囲が広がります。
+> `build_embeddings` は未処理分だけを埋め込むインクリメンタル設計です（件数×APIコストに注意）。
+
+### 3. フロントエンドの起動
 ```bash
 cd frontend
 npm install
+# 必要なら .env.local で NEXT_PUBLIC_API_URL を設定（既定: http://localhost:8000）
 npm run dev
 ```
 
@@ -86,8 +104,6 @@ npm run dev
 
 ## 📄 開発レポート (Documentation)
 
-本プロジェクトの開発における技術的な意思決定や、試行錯誤の過程については以下のドキュメントにまとめています。
-
+- [プロジェクトレポート（SPA型・論点管理）](./ARTIFACTS/project_report.html) — 設計判断・論点・実装計画の中核ドキュメント
 - [開発の軌跡と試行錯誤 (Development Journey)](./docs/development_journey.md)
 - [技術的アーキテクチャと論点 (Technical Decisions)](./docs/technical_decisions.md)
-
