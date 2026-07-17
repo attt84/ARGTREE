@@ -1,91 +1,41 @@
-import os
-import json
+"""ライブ議論木機能のLLM処理（ツリー生成・深掘り解説・クエリ拡張）。
+
+すべて google-genai の構造化出力（response_schema）を使い、手動JSONパースは行わない。
+"""
 import logging
-import google.generativeai as genai
-from .models import ArgumentTree
+
+from .llm import agenerate_structured, agenerate_text
+from .models import ArgumentTree, ExpandedQueries
 
 logger = logging.getLogger(__name__)
 
-def generate_argument_tree(query: str, minutes_text: str) -> ArgumentTree:
-    """
-    議事録テキストをGemini APIで解析し、議論木（Argument Tree）として構造化する。
-    """
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is not set.")
-        
-    genai.configure(api_key=api_key)
-    # Gemini 3.5 Flash を使用して高速な構造化処理を行う
-    model = genai.GenerativeModel('gemini-3.5-flash')
-    
-    # プロンプトの構築（文字数を少し余裕をもたせる）
+
+async def generate_argument_tree(query: str, minutes_text: str) -> ArgumentTree:
+    """議事録テキストを解析し、議論木（Argument Tree）として構造化する。"""
     prompt = f"""
 あなたは議論を整理・構造化する専門AI（国会議論木）です。
-以下の国会議事録テキスト（キーワードに関する発言の抜粋）を分析し、テーマ「{query}」に関する議論木（Argument Tree）をJSON形式で生成してください。
+以下の国会議事録テキスト（キーワードに関する発言の抜粋）を分析し、テーマ「{query}」に関する議論木（Argument Tree）を生成してください。
 
 【議事録】
-{minutes_text[:30000]}
+{minutes_text}
 
-議論木は nodes（ノードのリスト）と edges（エッジのリスト）で構成されます。
-nodeの属性:
-- id: 一意の文字列 (例: "node_1")
-- label: 意見や論点の短い要約 (20文字以内)
-- type: "theme" (大テーマ), "pro" (賛成意見), "con" (反対意見), "neutral" (中立/補足), "solution" (解決策/提案)
-- source: 発言者名（わかれば）
-
-edgeの属性:
-- id: 一意の文字列 (例: "edge_1")
-- source: 接続元のnode id
-- target: 接続先のnode id
-
-必ずルートノード（type: "theme"）を1つ作成し、そこから派生するように pro, con, neutral などをエッジでつないでください。
-
-以下のJSONフォーマットのみを出力してください（マークダウンのコードブロックは不要です）。
-{{
-  "nodes": [
-    {{"id": "node_1", "label": "{query}", "type": "theme", "source": "system"}}
-  ],
-  "edges": []
-}}
+【構造化のルール】
+- nodeのlabelは意見や論点の短い要約（20文字以内）
+- nodeのtypeは "theme"（大テーマ）, "pro"（賛成意見）, "con"（反対意見）, "neutral"（中立/補足）, "solution"（解決策/提案）のいずれか
+- nodeのsourceには発言者名を入れる（わかれば）
+- 必ずルートノード（type: "theme"）を1つ作成し、そこから派生するように pro, con, neutral, solution をエッジでつなぐ
+- ノードは8〜20個程度。議事録に実際に存在する論点のみを使い、創作しない
+- edgeのsource/targetにはnodeのidを指定する
 """
-    try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        # JSON部分だけを抽出する簡単なパース（```json などの除去）
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-        
-        data = json.loads(text)
-        return ArgumentTree(**data)
-    except Exception as e:
-        import traceback
-        with open("gemini_error.txt", "w", encoding="utf-8") as f:
-            f.write(f"Error: {str(e)}\n")
-            f.write(traceback.format_exc())
-        
-        logger.error(f"Error parsing with Gemini API: {e}")
-        # フォールバックのダミーツリーを返す
-        return ArgumentTree(
-            nodes=[
-                {"id": "n1", "label": f"{query} (解析エラー)", "type": "theme", "source": "system"},
-                {"id": "n2", "label": "議事録が取得できませんでした", "type": "neutral", "source": "system"}
-            ],
-            edges=[{"id": "e1", "source": "n1", "target": "n2"}]
-        )
+    tree = await agenerate_structured(prompt, ArgumentTree, temperature=0.2)
+    # 構造の妥当性チェック: 存在しないノードを指すエッジを除去する
+    node_ids = {n.id for n in tree.nodes}
+    tree.edges = [e for e in tree.edges if e.source in node_ids and e.target in node_ids]
+    return tree
 
-def generate_node_detail(query: str, node_label: str, minutes_text: str) -> str:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is not set.")
-        
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-3.5-flash')
-    
+
+async def generate_node_detail(query: str, node_label: str, minutes_text: str) -> str:
+    """特定の論点についての深掘り解説をMarkdownで生成する。"""
     prompt = f"""
 あなたは議論を深掘りして解説する専門AI（国会議論木）です。
 以下の国会議事録テキスト（テーマ「{query}」に関する発言）をもとに、特定の論点である「{node_label}」について詳細な解説をMarkdown形式で生成してください。
@@ -95,53 +45,35 @@ def generate_node_detail(query: str, node_label: str, minutes_text: str) -> str:
 2. **関連する発言の引用**: 議事録の中から、この論点に最も関連する発言（発言者名と内容の要約や引用）をピックアップして提示してください。その際、必ず提供されているURL（一次情報のリンク）も一緒に記載してください。
 3. **考えられる対立意見や課題**: この論点に対する懸念や反論、今後の課題について整理してください。
 
-【議事録】
-{minutes_text[:30000]}
-"""
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        logger.error(f"Error generating node detail: {e}")
-        return "申し訳ありません。詳細情報の生成中にエラーが発生しました。"
+【厳守事項】
+- 引用・URL・発言者名は必ず議事録テキスト内に実在するものだけを使うこと。創作しないこと。
 
-def expand_search_query(original_query: str) -> list[str]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is not set.")
-        
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-3.5-flash')
-    
+【議事録】
+{minutes_text}
+"""
+    return await agenerate_text(prompt, temperature=0.3)
+
+
+async def expand_search_query(original_query: str) -> list[str]:
+    """検索クエリをAIで拡張する（超検索）。失敗時は元クエリのみ返す。"""
     prompt = f"""
 あなたは政治や社会問題に関する検索クエリの拡張を行う専門アシスタントです。
 ユーザーが入力したキーワード「{original_query}」に対して、国会議事録でよく一緒に議論される、あるいは関連するキーワードやフレーズを推測し、検索クエリのリストを作成してください。
 
 【ルール】
-- 検索の網羅性を高めるため、元のキーワードを含めつつ、別の視点や関連語を用いたクエリを3つ作成してください。
+- 検索の網羅性を高めるため、元のキーワードを含めつつ、別の視点や関連語を用いたクエリを合計3つ作成してください。
 - 1つのクエリにつき、1語または2語（スペース区切りでAND検索になります）としてください。長すぎる文章は避けてください。
-- JSONフォーマットのみを出力してください。マークダウンのコードブロックは不要です。
 
-【出力例（ユーザー入力が「少子化対策」の場合）】
-["少子化対策", "児童手当", "育休 支援"]
-
-では、以下の出力フォーマットでJSON配列のみを出力してください。
+【例】ユーザー入力が「少子化対策」の場合: ["少子化対策", "児童手当", "育休 支援"]
 """
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-        
-        queries = json.loads(text)
-        if isinstance(queries, list) and len(queries) > 0:
-            return queries[:3]
-        return [original_query]
-    except Exception as e:
-        logger.error(f"Error expanding query: {e}")
+        result = await agenerate_structured(prompt, ExpandedQueries, temperature=0.5)
+        queries = [q.strip() for q in result.queries if q.strip()]
+        if not queries:
+            return [original_query]
+        if original_query not in queries:
+            queries.insert(0, original_query)
+        return queries[:3]
+    except Exception as e:  # 拡張の失敗は致命的ではないため元クエリで続行する
+        logger.warning("query expansion failed, falling back to original: %s", e)
         return [original_query]
