@@ -3,11 +3,14 @@
 import React, { useEffect } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   MiniMap,
   Controls,
   Background,
   useNodesState,
   useEdgesState,
+  useNodesInitialized,
+  useReactFlow,
   Node,
   Edge,
   MarkerType,
@@ -52,6 +55,14 @@ const layoutElements = (nodes: Node[], edges: Edge[]): Node[] => {
   });
 };
 
+// ミニマップ用の色（ノード本体は透過スタイルのため、別途色を与えないと描画されない）
+const MINIMAP_COLORS: Record<string, string> = {
+  pro: '#4ade80',
+  con: '#f87171',
+  theme: '#2563eb',
+  solution: '#facc15',
+};
+
 const nodeStyle = (type: ArgumentNode['type']): string => {
   switch (type) {
     case 'pro':
@@ -67,9 +78,19 @@ const nodeStyle = (type: ArgumentNode['type']): string => {
   }
 };
 
-const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
+const ArgumentTreeInner: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const nodesInitialized = useNodesInitialized();
+  const { fitView } = useReactFlow();
+
+  // fitViewプロパティはマウント時にしか効かず、ノードは検索後に非同期で入るため、
+  // ノードの実寸が確定したタイミングで明示的に全体表示に合わせる
+  useEffect(() => {
+    if (nodesInitialized && nodes.length > 0) {
+      fitView({ padding: 0.15 });
+    }
+  }, [nodesInitialized, nodes.length, fitView]);
 
   useEffect(() => {
     if (!data) return;
@@ -78,6 +99,7 @@ const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
       id: n.id,
       position: { x: 0, y: 0 },
       data: {
+        argType: n.type,
         label: (
           <div className={`p-3 rounded-lg shadow-sm border-2 w-60 text-sm ${nodeStyle(n.type)}`}>
             <div className="font-semibold mb-1">{n.label}</div>
@@ -126,11 +148,23 @@ const ArgumentTree: React.FC<ArgumentTreeProps> = ({ data, onNodeClick }) => {
         attributionPosition="bottom-right"
       >
         <Controls />
-        <MiniMap zoomable pannable />
+        <MiniMap
+          zoomable
+          pannable
+          nodeColor={(node) => MINIMAP_COLORS[node.data?.argType as string] ?? '#cbd5e1'}
+          nodeStrokeWidth={3}
+        />
         <Background color="#aaa" gap={16} />
       </ReactFlow>
     </div>
   );
 };
+
+// useReactFlow を使うため Provider 配下に置く
+const ArgumentTree: React.FC<ArgumentTreeProps> = (props) => (
+  <ReactFlowProvider>
+    <ArgumentTreeInner {...props} />
+  </ReactFlowProvider>
+);
 
 export default ArgumentTree;
